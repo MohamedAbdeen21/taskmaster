@@ -1,96 +1,45 @@
-use std::fmt::Display;
-
-use anyhow::{Error, Result};
-use chrono::{NaiveDateTime, Utc};
-use itertools::Itertools;
-use pyo3::prelude::*;
-
-use crate::cron::expression::Expression;
+use anyhow::Error;
+use pyo3::{prelude::*, types::IntoPyDict, types::PyDict};
 
 #[pyclass(unsendable)]
-#[derive(Default)]
+#[derive(Clone, Debug)]
 pub struct Task {
     #[pyo3(get)]
     pub name: String,
-    pub start: bool,
-    pub expression: Option<Expression>,
-    pub children: Vec<*mut Task>,
-    pub parents: Vec<*mut Task>,
-}
-
-impl Display for Task {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.children.is_empty() {
-            return Ok(());
-        }
-
-        if let Some(expression) = &self.expression {
-            write!(f, "{} -> {}", expression.fields.join(" "), self.name)?;
-        } else {
-            write!(f, "{}", self.name)?;
-        }
-
-        unsafe {
-            let c = self
-                .children
-                .iter()
-                .map(|child| (*(*child)).name.clone())
-                .join(", ");
-            writeln!(f, " -> [{}]", c)?;
-            self.children
-                .iter()
-                .for_each(|c| write!(f, "{}", (*(*c))).unwrap())
-        }
-        Ok(())
-    }
+    pub children: Vec<String>,
+    pub parents: Vec<String>,
+    callable: PyObject,
 }
 
 #[pymethods]
 impl Task {
     #[new]
-    pub fn new(name: &str, expression: Option<&str>) -> Result<Self, Error> {
-        if let Some(expression) = expression {
-            let exp = Expression::from_str(expression)?;
-            return Ok(Task {
-                name: name.to_string(),
-                expression: Some(exp),
-                start: true,
-                ..Task::default()
-            });
-        }
-
+    pub fn new(name: &str, callable: PyObject) -> Result<Self, Error> {
         Ok(Task {
             name: name.to_string(),
-            start: false,
-            ..Task::default()
+            children: Vec::new(),
+            parents: Vec::new(),
+            callable,
         })
     }
 
-    pub fn next(&self) -> Option<NaiveDateTime> {
-        if let Some(e) = &self.expression {
-            Some(e.next(Utc::now().naive_utc()))
-        } else {
-            None
-        }
-    }
-
     pub fn __rshift__(&mut self, other: &mut Task) {
-        other.parents.push(self);
-        self.children.push(other);
-        // println!("{} got rshift on {}", self.name, other.name);
-        // unsafe { self.children.iter().for_each(|x| println!("{}", *(*x))) }
+        other.parents.push(self.name.clone());
+        self.children.push(other.name.clone());
     }
 
     pub fn info(&self) {
-        println!("{}", self);
+        println!("{:?}", self);
     }
 
-    pub fn execute(&self, who: String) {
-        println!("{} executed {}", who, self.name);
-        unsafe {
-            self.children
-                .iter()
-                .for_each(|c| (*(*c)).execute(self.name.clone()))
-        }
+    pub fn execute(&self, caller: &str, args: Option<Py<PyDict>>) -> PyResult<Py<PyDict>> {
+        Python::with_gil(|py| -> PyResult<Py<PyDict>> {
+            let args = [(caller, args)].into_py_dict(py);
+            // args.unwrap_or([(py.None(), py.None())].into_py_dict(py).into_py(py)),
+            // );
+            let r = self.callable.call(py, (), Some(args))?;
+            println!("Executed {} and got {:?}", self.name, r.to_string());
+            return Ok(r.extract(py)?);
+        })
     }
 }
