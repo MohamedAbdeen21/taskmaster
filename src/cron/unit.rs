@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use anyhow::anyhow;
-use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
+use anyhow::{anyhow, Error};
+use chrono::{Datelike, NaiveDateTime, Timelike};
 use itertools::Itertools;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -18,7 +18,7 @@ pub enum Unit {
 }
 
 impl Unit {
-    pub fn range_from_str(&self, v: &str) -> Result<Vec<i32>, anyhow::Error> {
+    pub fn range_from_str(&self, v: &str) -> Result<Vec<i32>, Error> {
         let mut step = 1;
         let (mut start, mut end) = match self {
             Unit::Minute => (0, 59),
@@ -34,16 +34,7 @@ impl Unit {
             let r = v.split_once('/').unwrap().0;
             if r.contains('-') {
                 let (l, r) = v.split_once('/').unwrap().0.split_once('-').unwrap();
-                let (new_start, new_end) = (l.parse::<i32>()?, r.parse::<i32>()?);
-                if new_start < start || new_end > end {
-                    return Err(anyhow!(
-                        "Range for {:?} must be between {} and {}",
-                        self,
-                        start,
-                        end
-                    ));
-                }
-                (start, end) = (new_start, new_end);
+                (start, end) = self.validate_range(l.parse()?, r.parse()?)?;
             } else if r != "*" {
                 return Err(anyhow!(
                     "Intervals must be used with a range (* or an explicit range)"
@@ -53,28 +44,11 @@ impl Unit {
 
         if !v.contains('/') && v.contains('-') {
             let (l, r) = v.split_once('-').unwrap();
-            let (new_start, new_end) = (l.parse::<i32>()?, r.parse::<i32>()?);
-            if new_start < start || new_end > end {
-                return Err(anyhow!(
-                    "Range for {:?} must be between {} and {}",
-                    self,
-                    start,
-                    end
-                ));
-            }
-            (start, end) = (new_start, new_end);
+            (start, end) = self.validate_range(l.parse()?, r.parse()?)?;
         }
 
         if let Ok(num) = v.parse() {
-            if num < start || num > end {
-                return Err(anyhow!(
-                    "Value for {:?} must be between {} and {}",
-                    self,
-                    start,
-                    end
-                ));
-            }
-            return Ok(vec![num]);
+            (start, end) = self.validate_range(num, num)?;
         }
 
         Ok((start..=end).step_by(step).collect_vec())
@@ -97,7 +71,28 @@ impl Unit {
         time
     }
 
-    fn get(&self, time: DateTime<Utc>) -> i32 {
+    fn validate_range(&self, start: i32, end: i32) -> Result<(i32, i32), Error> {
+        let (i, j) = match self {
+            Unit::Minute => (0, 59),
+            Unit::Hour => (0, 23),
+            Unit::Dom => (1, 31),
+            Unit::Dow => (0, 6),
+            Unit::Month => (1, 12),
+            _ => unreachable!(),
+        };
+
+        if start < i || end > j {
+            return Err(anyhow!(
+                "Value for {:?} must be between {} and {}",
+                self,
+                start,
+                end
+            ));
+        }
+        Ok((start, end))
+    }
+
+    fn get(&self, time: NaiveDateTime) -> i32 {
         match self {
             Unit::Year => time.year(),
             Unit::Month => time.month() as _,
@@ -108,7 +103,7 @@ impl Unit {
         }
     }
 
-    pub fn to_hash(time: DateTime<Utc>) -> HashMap<Unit, i32> {
+    pub fn to_hash(time: NaiveDateTime) -> HashMap<Unit, i32> {
         HashMap::from([
             (Unit::Year, Unit::Year.get(time)),
             (Unit::Month, Unit::Month.get(time)),
@@ -118,7 +113,7 @@ impl Unit {
         ])
     }
 
-    pub fn from_hash(hash: HashMap<Unit, i32>) -> DateTime<Utc> {
+    pub fn from_hash(hash: HashMap<Unit, i32>) -> NaiveDateTime {
         let year = hash[&Unit::Year];
         let month = hash[&Unit::Month];
         let day = hash[&Unit::Day];
@@ -129,6 +124,5 @@ impl Unit {
             "%Y-%m-%d %H:%M:%S",
         )
         .unwrap()
-        .and_utc()
     }
 }

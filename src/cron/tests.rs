@@ -1,11 +1,9 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 
 use super::expression::Expression;
 
-fn utc_from_str(s: &str) -> DateTime<Utc> {
-    NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
-        .unwrap()
-        .and_utc()
+fn utc_from_str(s: &str) -> NaiveDateTime {
+    NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").unwrap()
 }
 
 #[test]

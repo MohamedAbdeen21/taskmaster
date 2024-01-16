@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Error, Result};
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{Datelike, NaiveDateTime};
 use itertools::Itertools;
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -10,7 +10,8 @@ use super::unit::Unit;
 const DOM: usize = 2;
 const DOW: usize = 4;
 
-#[pyclass(unsendable)]
+#[pyclass]
+#[derive(Debug)]
 pub struct Expression {
     pub fields: [String; 5],
 }
@@ -31,7 +32,7 @@ impl Expression {
         Ok(e)
     }
 
-    pub fn next(&self, now: DateTime<Utc>) -> DateTime<Utc> {
+    pub fn next(&self, now: NaiveDateTime) -> NaiveDateTime {
         let schedule = self.create_schedule(now.year(), now.month() as _).unwrap();
         let (next, _) = Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now));
         Unit::from_hash(next)
@@ -117,7 +118,7 @@ impl Expression {
         let mut schedule = HashMap::with_capacity(7); // 7 variants of Unit
         let mut ignore = Vec::new();
 
-        schedule.insert(Unit::Year, (2020..2100).collect_vec());
+        schedule.insert(Unit::Year, (year..year + 20).collect_vec());
 
         // handle interaction with ranges
         if self.fields[DOM] == "*" && self.fields[DOW] != "*" {
