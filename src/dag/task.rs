@@ -1,14 +1,16 @@
-use anyhow::Error;
+use std::collections::HashMap;
+
+use anyhow::{bail, Error};
 use pyo3::{prelude::*, types::IntoPyDict, types::PyDict};
 
-#[pyclass(unsendable)]
+#[pyclass]
 #[derive(Clone, Debug)]
 pub struct Task {
     #[pyo3(get)]
     pub name: String,
-    pub children: Vec<String>,
-    pub parents: Vec<String>,
     callable: PyObject,
+    inputs: HashMap<String, Option<Py<PyDict>>>,
+    triggers: usize,
 }
 
 #[pymethods]
@@ -17,29 +19,37 @@ impl Task {
     pub fn new(name: &str, callable: PyObject) -> Result<Self, Error> {
         Ok(Task {
             name: name.to_string(),
-            children: Vec::new(),
-            parents: Vec::new(),
+            inputs: HashMap::new(),
+            triggers: 0,
             callable,
         })
     }
 
-    pub fn __rshift__(&mut self, other: &mut Task) {
-        other.parents.push(self.name.clone());
-        self.children.push(other.name.clone());
+    pub fn add_parent(&mut self, parent: &Task) {
+        self.inputs.insert(parent.name.clone(), None);
     }
 
-    pub fn info(&self) {
-        println!("{:?}", self);
-    }
+    pub fn execute(&mut self, caller: &str, args: Option<Py<PyDict>>) -> Result<Py<PyDict>, Error> {
+        self.inputs.insert(caller.to_string(), args.clone());
+        self.triggers += 1;
 
-    pub fn execute(&self, caller: &str, args: Option<Py<PyDict>>) -> PyResult<Py<PyDict>> {
-        Python::with_gil(|py| -> PyResult<Py<PyDict>> {
-            let args = [(caller, args)].into_py_dict(py);
-            // args.unwrap_or([(py.None(), py.None())].into_py_dict(py).into_py(py)),
-            // );
+        if self.triggers < self.inputs.len() {
+            bail!("")
+        }
+
+        self.triggers = 0;
+
+        Ok(Python::with_gil(|py| -> PyResult<Py<PyDict>> {
+            let args = self
+                .inputs
+                .iter()
+                .map(|(c, a)| (c, a))
+                .collect::<Vec<_>>()
+                .into_py_dict(py);
+
             let r = self.callable.call(py, (), Some(args))?;
-            println!("Executed {} and got {:?}", self.name, r.to_string());
-            return Ok(r.extract(py)?);
-        })
+            println!("Executed {} got {:?}", self.name, r.to_string());
+            r.extract(py)
+        })?)
     }
 }

@@ -1,9 +1,7 @@
-use std::{
-    collections::{HashMap, HashSet},
-    thread::sleep,
-};
+use core::panic;
+use std::{collections::HashMap, thread::sleep};
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::{Error, Result};
 use chrono::Duration;
 use pyo3::{prelude::*, types::PyDict};
 
@@ -16,61 +14,74 @@ pub struct Executor {
     pub graph: HashMap<String, Vec<String>>,
     pub tasks: HashMap<String, Task>,
     pub expression: Expression,
-    pub root: String,
+    pub roots: Vec<String>,
 }
 
 #[pymethods]
 impl Executor {
     #[new]
-    pub fn new(expression: &str, root: Task) -> Result<Self, Error> {
+    pub fn new(expression: &str) -> Result<Self, Error> {
         Ok(Executor {
             expression: Expression::from_str(expression)?,
             graph: HashMap::new(),
+            roots: Vec::new(),
             tasks: HashMap::new(),
-            root: root.name,
         })
     }
 
-    pub fn register_tasks(&mut self, tasks: Vec<Task>) -> Result<()> {
-        for task in tasks {
-            let name = task.name.clone();
-            if self.tasks.insert(name.clone(), task).is_some() {
-                return Err(anyhow!("Task {} already exists", name));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn start(&self) -> Result<()> {
-        self.verify_registred()?;
+    pub fn start(&mut self) -> Result<()> {
         loop {
             // let now = Utc::now().naive_utc();
             // let next = self.expression.next(now);
             // sleep(next.signed_duration_since(now).to_std().unwrap());
             sleep(Duration::seconds(5).to_std()?);
-            self.execute("main", self.root.clone(), None)
+            for root in self.roots.clone().into_iter() {
+                self.execute("main", root, None)
+            }
         }
+    }
+
+    pub fn add_root(&mut self, root: Task) {
+        let name = root.name.clone();
+        self.roots.push(name.clone());
+        self.tasks.insert(name, root);
+    }
+
+    pub fn add_edge(&mut self, parent: Task, children: Vec<Task>) -> Result<()> {
+        let rn = parent.name.clone();
+
+        self.graph
+            .entry(rn.clone())
+            .or_default()
+            .extend(children.iter().map(|c| c.name.clone()));
+
+        for child in children.into_iter() {
+            self.tasks
+                .entry(child.name.clone())
+                .or_insert(child)
+                .add_parent(&parent);
+        }
+
+        self.tasks.insert(rn.clone(), parent);
+
+        Ok(())
     }
 }
 
 impl Executor {
-    fn execute(&self, caller: &str, task: String, inputs: Option<Py<PyDict>>) {
-        let t = &self.tasks[&task];
-        let output = t.execute(caller, inputs).unwrap();
-        t.children
+    fn execute(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) {
+        let t = self.tasks.get_mut(&task).unwrap();
+        let output = match t.execute(caller, inputs) {
+            Ok(output) => output,
+            Err(e) if e.to_string() == "" => return,
+            Err(e) => panic!("{}", e),
+        };
+
+        self.graph
+            .clone()
+            .get(&task)
+            .unwrap_or(&vec![])
             .iter()
             .for_each(|child| self.execute(&task, child.clone(), Some(output.clone())))
-    }
-
-    fn verify_registred(&self) -> Result<()> {
-        let mut used = self.graph.values().flatten().collect::<HashSet<_>>();
-        used.insert(&self.root);
-        let registered = self.tasks.keys().collect::<HashSet<&String>>();
-        let unregistered: Vec<_> = used.difference(&registered).collect();
-        if unregistered.is_empty() {
-            Ok(())
-        } else {
-            Err(anyhow!("Tasks {:?} are unregistered", unregistered))
-        }
     }
 }

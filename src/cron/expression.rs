@@ -19,7 +19,7 @@ pub struct Expression {
 #[pymethods]
 impl Expression {
     #[new]
-    pub fn from_str(expression: &str) -> Result<Self, anyhow::Error> {
+    pub fn from_str(expression: &str) -> Result<Self, Error> {
         let fields: [String; 5] = expression
             .split_whitespace()
             .map(|s| s.to_string())
