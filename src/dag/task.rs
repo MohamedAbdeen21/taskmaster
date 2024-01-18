@@ -1,10 +1,19 @@
 use std::collections::HashMap;
 
-use anyhow::{bail, Error};
+use anyhow::Error;
+use itertools::Itertools;
 use pyo3::{prelude::*, types::IntoPyDict, types::PyDict};
 
+#[derive(thiserror::Error, Debug)]
+pub enum ExecutionError {
+    #[error("Waiting for all parents to finish")]
+    NotYet,
+    #[error("Function execution failed")]
+    Fail(String),
+}
+
 #[pyclass]
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Task {
     #[pyo3(get)]
     pub name: String,
@@ -24,32 +33,36 @@ impl Task {
             callable,
         })
     }
+}
 
+impl Task {
     pub fn add_parent(&mut self, parent: &Task) {
         self.inputs.insert(parent.name.clone(), None);
     }
 
-    pub fn execute(&mut self, caller: &str, args: Option<Py<PyDict>>) -> Result<Py<PyDict>, Error> {
+    pub fn execute(
+        &mut self,
+        caller: &str,
+        args: Option<Py<PyDict>>,
+    ) -> Result<Py<PyDict>, ExecutionError> {
         self.inputs.insert(caller.to_string(), args.clone());
         self.triggers += 1;
 
         if self.triggers < self.inputs.len() {
-            bail!("")
+            return Err(ExecutionError::NotYet);
         }
 
         self.triggers = 0;
 
-        Ok(Python::with_gil(|py| -> PyResult<Py<PyDict>> {
-            let args = self
-                .inputs
-                .iter()
-                .map(|(c, a)| (c, a))
-                .collect::<Vec<_>>()
-                .into_py_dict(py);
+        match Python::with_gil(|py| -> PyResult<Py<PyDict>> {
+            let args = self.inputs.iter().collect_vec().into_py_dict(py);
 
             let r = self.callable.call(py, (), Some(args))?;
             println!("Executed {} got {:?}", self.name, r.to_string());
             r.extract(py)
-        })?)
+        }) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(ExecutionError::Fail(e.to_string())),
+        }
     }
 }

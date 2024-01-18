@@ -1,13 +1,12 @@
-use core::panic;
 use std::{collections::HashMap, thread::sleep};
 
-use anyhow::{Error, Result};
+use anyhow::{bail, Error, Result};
 use chrono::Duration;
 use pyo3::{prelude::*, types::PyDict};
 
 use crate::cron::expression::Expression;
 
-use super::task::Task;
+use super::task::{ExecutionError, Task};
 
 #[pyclass]
 pub struct Executor {
@@ -34,9 +33,9 @@ impl Executor {
             // let now = Utc::now().naive_utc();
             // let next = self.expression.next(now);
             // sleep(next.signed_duration_since(now).to_std().unwrap());
-            sleep(Duration::seconds(5).to_std()?);
+            sleep(Duration::seconds(5).to_std().unwrap());
             for root in self.roots.clone().into_iter() {
-                self.execute("main", root, None)
+                self.run("main", root, None)?
             }
         }
     }
@@ -69,19 +68,20 @@ impl Executor {
 }
 
 impl Executor {
-    fn execute(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) {
+    fn run(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) -> Result<()> {
         let t = self.tasks.get_mut(&task).unwrap();
         let output = match t.execute(caller, inputs) {
             Ok(output) => output,
-            Err(e) if e.to_string() == "" => return,
-            Err(e) => panic!("{}", e),
+            Err(ExecutionError::NotYet) => return Ok(()),
+            Err(e) => bail!(e),
         };
 
-        self.graph
-            .clone()
-            .get(&task)
-            .unwrap_or(&vec![])
-            .iter()
-            .for_each(|child| self.execute(&task, child.clone(), Some(output.clone())))
+        if let Some(children) = self.graph.clone().get_mut(&task) {
+            for child in children {
+                self.run(&task, child.clone(), Some(output.clone()))?
+            }
+        }
+
+        Ok(())
     }
 }
