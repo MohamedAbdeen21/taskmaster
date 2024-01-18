@@ -1,35 +1,39 @@
-use std::collections::HashMap;
-
 use anyhow::Error;
 use itertools::Itertools;
 use pyo3::{prelude::*, types::IntoPyDict, types::PyDict};
+use std::collections::HashMap;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ExecutionError {
     #[error("Waiting for all parents to finish")]
     NotYet,
-    #[error("Function execution failed")]
-    Fail(String),
+    #[error("Task {} execution failed: {}", t, e)]
+    Fail { t: String, e: String },
 }
 
 #[pyclass]
 #[derive(Clone)]
 pub struct Task {
-    #[pyo3(get)]
     pub name: String,
     callable: PyObject,
     inputs: HashMap<String, Option<Py<PyDict>>>,
-    triggers: usize,
+    triggered: usize,
 }
 
 #[pymethods]
 impl Task {
     #[new]
-    pub fn new(name: &str, callable: PyObject) -> Result<Self, Error> {
+    pub fn new(callable: PyObject) -> Result<Self, Error> {
         Ok(Task {
-            name: name.to_string(),
+            name: callable
+                .to_string()
+                .split_whitespace()
+                .skip(1)
+                .next()
+                .unwrap()
+                .to_string(),
             inputs: HashMap::new(),
-            triggers: 0,
+            triggered: 0,
             callable,
         })
     }
@@ -44,25 +48,26 @@ impl Task {
         &mut self,
         caller: &str,
         args: Option<Py<PyDict>>,
-    ) -> Result<Py<PyDict>, ExecutionError> {
+    ) -> Result<Option<Py<PyDict>>, ExecutionError> {
         self.inputs.insert(caller.to_string(), args.clone());
-        self.triggers += 1;
+        self.triggered += 1;
 
-        if self.triggers < self.inputs.len() {
+        if self.triggered < self.inputs.len() {
             return Err(ExecutionError::NotYet);
         }
 
-        self.triggers = 0;
+        self.triggered = 0;
 
-        match Python::with_gil(|py| -> PyResult<Py<PyDict>> {
+        Python::with_gil(|py| -> PyResult<Option<Py<PyDict>>> {
             let args = self.inputs.iter().collect_vec().into_py_dict(py);
-
-            let r = self.callable.call(py, (), Some(args))?;
-            println!("Executed {} got {:?}", self.name, r.to_string());
-            r.extract(py)
-        }) {
-            Ok(v) => Ok(v),
-            Err(e) => Err(ExecutionError::Fail(e.to_string())),
-        }
+            match self.callable.call(py, (), Some(args))?.extract(py) {
+                Ok(v) => Ok(Some(v)),
+                Err(_) => Ok(None),
+            }
+        })
+        .map_err(|e| ExecutionError::Fail {
+            t: self.name.clone(),
+            e: e.to_string(),
+        })
     }
 }

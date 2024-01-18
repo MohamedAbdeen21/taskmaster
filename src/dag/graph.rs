@@ -1,30 +1,30 @@
-use std::{collections::HashMap, thread::sleep};
-
+use super::task::{ExecutionError, Task};
+use crate::cron::expression::Expression;
 use anyhow::{bail, Error, Result};
 use chrono::Duration;
 use pyo3::{prelude::*, types::PyDict};
-
-use crate::cron::expression::Expression;
-
-use super::task::{ExecutionError, Task};
+use std::{collections::HashMap, thread::sleep};
 
 #[pyclass]
-pub struct Executor {
-    pub graph: HashMap<String, Vec<String>>,
-    pub tasks: HashMap<String, Task>,
-    pub expression: Expression,
-    pub roots: Vec<String>,
+pub struct Graph {
+    graph: HashMap<String, Vec<String>>,
+    tasks: HashMap<String, Task>,
+    #[allow(dead_code)] // I usually override the cron scheduler while testing
+    expression: Expression,
+    roots: Vec<String>,
+    args: Option<Py<PyDict>>,
 }
 
 #[pymethods]
-impl Executor {
+impl Graph {
     #[new]
-    pub fn new(expression: &str) -> Result<Self, Error> {
-        Ok(Executor {
-            expression: Expression::from_str(expression)?,
+    pub fn new(schedule: &str, args: Option<Py<PyDict>>) -> Result<Self, Error> {
+        Ok(Graph {
+            expression: Expression::from_str(schedule)?,
             graph: HashMap::new(),
             roots: Vec::new(),
             tasks: HashMap::new(),
+            args,
         })
     }
 
@@ -32,10 +32,10 @@ impl Executor {
         loop {
             // let now = Utc::now().naive_utc();
             // let next = self.expression.next(now);
-            // sleep(next.signed_duration_since(now).to_std().unwrap());
-            sleep(Duration::seconds(5).to_std().unwrap());
+            // sleep(next.signed_duration_since(now).to_std()?);
+            sleep(Duration::seconds(5).to_std()?);
             for root in self.roots.clone().into_iter() {
-                self.run("main", root, None)?
+                self.run("main", root, self.args.clone())?
             }
         }
     }
@@ -61,24 +61,24 @@ impl Executor {
                 .add_parent(&parent);
         }
 
-        self.tasks.insert(rn.clone(), parent);
+        self.tasks.entry(rn).or_insert(parent);
 
         Ok(())
     }
 }
 
-impl Executor {
+impl Graph {
     fn run(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) -> Result<()> {
         let t = self.tasks.get_mut(&task).unwrap();
         let output = match t.execute(caller, inputs) {
-            Ok(output) => output,
+            Ok(v) => v,
             Err(ExecutionError::NotYet) => return Ok(()),
             Err(e) => bail!(e),
         };
 
         if let Some(children) = self.graph.clone().get_mut(&task) {
             for child in children {
-                self.run(&task, child.clone(), Some(output.clone()))?
+                self.run(&task, child.clone(), output.clone())?
             }
         }
 
