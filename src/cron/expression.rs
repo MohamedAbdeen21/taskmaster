@@ -32,10 +32,10 @@ impl Expression {
         Ok(e)
     }
 
-    pub fn next(&self, now: NaiveDateTime) -> NaiveDateTime {
+    pub fn next(&self, now: NaiveDateTime) -> Result<NaiveDateTime> {
         let schedule = self.create_schedule(now.year(), now.month() as _).unwrap();
-        let (next, _) = Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now));
-        Unit::from_hash(next)
+        let (next, _) = Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now))?;
+        Ok(Unit::from_hash(next))
     }
 }
 
@@ -45,19 +45,25 @@ impl Expression {
         reset: bool,
         schedule: &HashMap<Unit, Vec<i32>>,
         time: HashMap<Unit, i32>,
-    ) -> (HashMap<Unit, i32>, bool) {
+    ) -> Result<(HashMap<Unit, i32>, bool)> {
         let mut time = time;
         let mut schedule = schedule.clone();
 
         // No days schedules for this month, keep incrementing months till we find some days
         // the iterative approach helps with leap years
+        // If we go five years without finding a date, then the expression contains an invalid date
+        // like Feb-30 for example
+        let start_year = time[&Unit::Year];
         while !schedule.contains_key(&Unit::Day) || schedule[&Unit::Day].is_empty() {
+            if time[&Unit::Year] == start_year + 5 {
+                return Err(anyhow!("Invalid Expression"));
+            }
             time = next_month(time);
             schedule = adjust_days_to_month(&schedule, time[&Unit::Year], time[&Unit::Month])
         }
 
         if unit == Unit::None {
-            return (time, false);
+            return Ok((time, false));
         }
 
         // A higher field changed its value, need to reset all lower fields
@@ -73,14 +79,14 @@ impl Expression {
         // If minutes are not reset, then go to next value
         if unit == Unit::Minute {
             let (next_value, of) = get_next(&schedule[&unit], time[&unit]);
-            return (unit.set(time, next_value), of);
+            return Ok((unit.set(time, next_value), of));
         }
 
         // unit is in schedule, increment only if lower fields overflow
         if schedule[&unit].contains(&time[&unit]) {
-            let (mut time, of) = Self::calculate_next_time(unit.next(), false, &schedule, time);
+            let (mut time, of) = Self::calculate_next_time(unit.next(), false, &schedule, time)?;
             if !of {
-                return (time, of);
+                return Ok((time, of));
             }
 
             let (next_value, of) = get_next(&schedule[&unit], time[&unit]);
@@ -90,10 +96,10 @@ impl Expression {
             // and reset lower fields
             if unit == Unit::Month {
                 schedule = adjust_days_to_month(&schedule, time[&Unit::Year], time[&Unit::Month]);
-                (time, _) = Self::calculate_next_time(unit.next(), true, &schedule, time);
+                (time, _) = Self::calculate_next_time(unit.next(), true, &schedule, time)?;
             }
 
-            return (time, of);
+            return Ok((time, of));
         }
 
         // unit is not in schedule, increment and reset lower fields
@@ -107,11 +113,11 @@ impl Expression {
             }
 
             // reset lower fields
-            (time, _) = Self::calculate_next_time(unit.next(), true, &schedule, time);
-            return (time, of);
+            (time, _) = Self::calculate_next_time(unit.next(), true, &schedule, time)?;
+            return Ok((time, of));
         }
 
-        (time, false)
+        Ok((time, false))
     }
 
     fn create_schedule(&self, year: i32, month: i32) -> Result<HashMap<Unit, Vec<i32>>, Error> {

@@ -31,7 +31,7 @@ impl Graph {
     pub fn start(&mut self) -> Result<()> {
         loop {
             // let now = Utc::now().naive_utc();
-            // let next = self.expression.next(now);
+            // let next = self.expression.next(now)?;
             // sleep(next.signed_duration_since(now).to_std()?);
             sleep(Duration::seconds(5).to_std()?);
             for root in self.roots.clone().into_iter() {
