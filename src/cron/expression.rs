@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Error, Result};
-use chrono::{Datelike, NaiveDateTime};
+use chrono::{Datelike, NaiveDateTime, Utc};
 use itertools::Itertools;
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -21,20 +21,24 @@ impl Expression {
     #[new]
     pub fn from_str(expression: &str) -> Result<Self, Error> {
         let fields: [String; 5] = expression
+            .trim()
             .split_whitespace()
             .map(|s| s.to_string())
-            .collect::<Vec<String>>()
+            .collect_vec()
             .try_into()
             .map_err(|_| anyhow!("Expression {} should have 5 fields", expression))?;
 
+        let fields = Unit::parse_to_numeric(fields);
+
         let e = Expression { fields };
-        _ = e.create_schedule(2024, 1)?; // ensure expression is valid
+        _ = e.next(Utc::now().naive_utc())?; // ensure expression is valid
         Ok(e)
     }
 
     pub fn next(&self, now: NaiveDateTime) -> Result<NaiveDateTime> {
-        let schedule = self.create_schedule(now.year(), now.month() as _).unwrap();
-        let (next, _) = Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now))?;
+        let schedule = self.create_schedule(now.year(), now.month() as _)?;
+        let (next, _) =
+            Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now))?;
         Ok(Unit::from_hash(next))
     }
 }

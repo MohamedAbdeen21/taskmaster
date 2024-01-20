@@ -28,8 +28,7 @@ impl Task {
             name: callable
                 .to_string()
                 .split_whitespace()
-                .skip(1)
-                .next()
+                .nth(1)
                 .unwrap()
                 .to_string(),
             inputs: HashMap::new(),

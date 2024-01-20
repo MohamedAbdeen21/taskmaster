@@ -19,7 +19,6 @@ pub enum Unit {
 
 impl Unit {
     pub fn range_from_str(&self, v: &str) -> Result<Vec<i32>, Error> {
-        let mut step = 1;
         let (mut start, mut end) = match self {
             Unit::Minute => (0, 59),
             Unit::Hour => (0, 23),
@@ -29,13 +28,20 @@ impl Unit {
             _ => unreachable!(),
         };
 
+        if v == "*" {
+            return Ok((start..=end).collect_vec());
+        }
+
         if v.contains('/') {
-            step = v.split_once('/').unwrap().1.parse()?;
+            let step = v.split_once('/').unwrap().1.parse()?;
             let r = v.split_once('/').unwrap().0;
             if r.contains('-') {
                 let (l, r) = v.split_once('/').unwrap().0.split_once('-').unwrap();
-                (start, end) = self.validate_range(l.parse()?, r.parse()?)?;
-            } else if r != "*" {
+                let (start, end) = self.validate_range(l.parse()?, r.parse()?)?;
+                return Ok((start..=end).step_by(step).collect_vec());
+            } else if r == "*" {
+                return Ok((start..=end).step_by(step).collect_vec());
+            } else {
                 return Err(anyhow!(
                     "Intervals must be used with a range (* or an explicit range)"
                 ));
@@ -45,13 +51,15 @@ impl Unit {
         if !v.contains('/') && v.contains('-') {
             let (l, r) = v.split_once('-').unwrap();
             (start, end) = self.validate_range(l.parse()?, r.parse()?)?;
+            return Ok((start..=end).collect_vec());
         }
 
         if let Ok(num) = v.parse() {
             (start, end) = self.validate_range(num, num)?;
+            return Ok((start..=end).collect_vec());
+        } else {
+            return Err(anyhow!("Value {} is not valid in field {:?}", v, self));
         }
-
-        Ok((start..=end).step_by(step).collect_vec())
     }
 
     pub fn next(&self) -> Self {
@@ -103,6 +111,35 @@ impl Unit {
         }
     }
 
+    fn to_num(&self, value: &str) -> String {
+        match self {
+            Unit::Dow => value
+                .to_lowercase()
+                .replace("sun", "0")
+                .replace("mon", "1")
+                .replace("tue", "2")
+                .replace("wed", "3")
+                .replace("thu", "4")
+                .replace("fri", "5")
+                .replace("sat", "6"),
+            Unit::Month => value
+                .to_lowercase()
+                .replace("jan", "1")
+                .replace("feb", "2")
+                .replace("mar", "3")
+                .replace("apr", "4")
+                .replace("may", "5")
+                .replace("jun", "6")
+                .replace("jul", "7")
+                .replace("aug", "8")
+                .replace("sep", "9")
+                .replace("oct", "10")
+                .replace("nov", "11")
+                .replace("dec", "12"),
+            _ => unreachable!(),
+        }
+    }
+
     pub fn to_hash(time: NaiveDateTime) -> HashMap<Unit, i32> {
         HashMap::from([
             (Unit::Year, Unit::Year.get(time)),
@@ -124,5 +161,19 @@ impl Unit {
             "%Y-%m-%d %H:%M:%S",
         )
         .unwrap()
+    }
+
+    pub fn parse_to_numeric(fields: [String; 5]) -> [String; 5] {
+        fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| match index {
+                3 => Unit::Month.to_num(field),
+                4 => Unit::Dow.to_num(field),
+                _ => field.to_string(),
+            })
+            .collect_vec()
+            .try_into()
+            .unwrap()
     }
 }

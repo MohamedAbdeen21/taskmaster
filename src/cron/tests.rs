@@ -325,12 +325,24 @@ fn mix_interval_and_ranges() {
 }
 
 #[test]
-fn non_existant_date() {
-    let expression = Expression::from_str("0 0 30 2 *").unwrap();
-    let input = utc_from_str("2024-03-01 00:00:00");
-    match expression.next(input) {
-        Ok(_) => assert!(false),
-        Err(_) => assert!(true),
-    }
+fn should_fail() {
+    assert!(Expression::from_str("0 0 30 2 *").is_err()); // non-existant date
+    assert!(Expression::from_str("x 0 * 2 *").is_err()); // invalid value
+    assert!(Expression::from_str("0 0 * -1 *").is_err()); // invalid value
+    assert!(Expression::from_str("0 0 * mon-wed *").is_err()); // wrong field
+    assert!(Expression::from_str("0 0 * * feb").is_err()); // wrong field
+    assert!(Expression::from_str("0 0 * jun-jan *").is_err()) // wrong order
 }
 
+#[test]
+fn non_numeric_expression() {
+    let expression = Expression::from_str("0 0 20 feb *").unwrap();
+    let parsed = Expression::from_str("0 0 20 2 *").unwrap();
+    assert_eq!(expression.fields, parsed.fields);
+    let expression = Expression::from_str("0 0 20 * mon-wed").unwrap();
+    let parsed = Expression::from_str("0 0 20 * 1-3").unwrap();
+    assert_eq!(expression.fields, parsed.fields);
+    let expression = Expression::from_str("0 0 20 * mon-wed").unwrap();
+    let parsed = Expression::from_str("0 0 20 * 1-3").unwrap();
+    assert_eq!(expression.fields, parsed.fields);
+}
