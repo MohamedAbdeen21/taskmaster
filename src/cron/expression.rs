@@ -11,7 +11,7 @@ const DOM: usize = 2;
 const DOW: usize = 4;
 
 #[pyclass]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expression {
     pub fields: [String; 5],
 }

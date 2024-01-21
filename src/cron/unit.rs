@@ -57,9 +57,9 @@ impl Unit {
         if let Ok(num) = v.parse() {
             (start, end) = self.validate_range(num, num)?;
             return Ok((start..=end).collect_vec());
-        } else {
-            return Err(anyhow!("Value {} is not valid in field {:?}", v, self));
         }
+
+        return Err(anyhow!("Value {} is not valid in field {:?}", v, self));
     }
 
     pub fn next(&self) -> Self {
@@ -79,6 +79,45 @@ impl Unit {
         time
     }
 
+    pub fn to_hash(time: NaiveDateTime) -> HashMap<Unit, i32> {
+        HashMap::from([
+            (Unit::Year, Unit::Year.get(time)),
+            (Unit::Month, Unit::Month.get(time)),
+            (Unit::Day, Unit::Day.get(time)),
+            (Unit::Hour, Unit::Hour.get(time)),
+            (Unit::Minute, Unit::Minute.get(time)),
+        ])
+    }
+
+    pub fn from_hash(hash: HashMap<Unit, i32>) -> NaiveDateTime {
+        let year = hash[&Unit::Year];
+        let month = hash[&Unit::Month];
+        let day = hash[&Unit::Day];
+        let hour = hash[&Unit::Hour];
+        let min = hash[&Unit::Minute];
+        NaiveDateTime::parse_from_str(
+            &format!("{year}-{month}-{day} {hour}:{min}:00"),
+            "%Y-%m-%d %H:%M:%S",
+        )
+        .unwrap()
+    }
+
+    pub fn parse_to_numeric(fields: [String; 5]) -> [String; 5] {
+        fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| match index {
+                3 => Unit::Month.to_num(field),
+                4 => Unit::Dow.to_num(field),
+                _ => field.to_string(),
+            })
+            .collect_vec()
+            .try_into()
+            .unwrap()
+    }
+}
+
+impl Unit {
     fn validate_range(&self, start: i32, end: i32) -> Result<(i32, i32), Error> {
         let (i, j) = match self {
             Unit::Minute => (0, 59),
@@ -138,42 +177,5 @@ impl Unit {
                 .replace("dec", "12"),
             _ => unreachable!(),
         }
-    }
-
-    pub fn to_hash(time: NaiveDateTime) -> HashMap<Unit, i32> {
-        HashMap::from([
-            (Unit::Year, Unit::Year.get(time)),
-            (Unit::Month, Unit::Month.get(time)),
-            (Unit::Day, Unit::Day.get(time)),
-            (Unit::Hour, Unit::Hour.get(time)),
-            (Unit::Minute, Unit::Minute.get(time)),
-        ])
-    }
-
-    pub fn from_hash(hash: HashMap<Unit, i32>) -> NaiveDateTime {
-        let year = hash[&Unit::Year];
-        let month = hash[&Unit::Month];
-        let day = hash[&Unit::Day];
-        let hour = hash[&Unit::Hour];
-        let min = hash[&Unit::Minute];
-        NaiveDateTime::parse_from_str(
-            &format!("{year}-{month}-{day} {hour}:{min}:00"),
-            "%Y-%m-%d %H:%M:%S",
-        )
-        .unwrap()
-    }
-
-    pub fn parse_to_numeric(fields: [String; 5]) -> [String; 5] {
-        fields
-            .iter()
-            .enumerate()
-            .map(|(index, field)| match index {
-                3 => Unit::Month.to_num(field),
-                4 => Unit::Dow.to_num(field),
-                _ => field.to_string(),
-            })
-            .collect_vec()
-            .try_into()
-            .unwrap()
     }
 }

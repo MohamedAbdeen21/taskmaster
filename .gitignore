@@ -75,4 +75,4 @@ docs/_build/
 # Cargo
 Cargo.lock
 
-t.py
+/test/

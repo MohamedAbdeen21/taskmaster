@@ -37,7 +37,7 @@ Taskmaster is a WIP Orchestration Framework for Python, written in Rust. This pr
 
 #### Using the cron submodule
 ```python
-from tm import Expression
+from tm.cron import Expression
 from datetime import datetime
 
 # supports:
@@ -73,7 +73,7 @@ print(t)
 #### Using the DAG
 
 ```python
-from tm import Task, Graph
+from tm import Task, Graph, Executor
 
 # The executor handling the DAG
 # takes a scehdule and the parameters to be passed to root 
@@ -109,5 +109,7 @@ graph.add_edge(root_add_2, [add_3, print_return_none])
 graph.add_edge(add_3, [print_return_none])
 graph.add_edge(print_return_none, [leaf])
 
-graph.start()
+executor = Executor()
+executor.add(graph)
+executor.start()
 ```
