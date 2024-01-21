@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use itertools::Itertools;
 use pyo3::{prelude::*, types::IntoPyDict, types::PyDict};
 use std::collections::HashMap;
@@ -23,7 +23,11 @@ pub struct Task {
 #[pymethods]
 impl Task {
     #[new]
-    pub fn new(callable: PyObject) -> Result<Self, Error> {
+    pub fn new(callable: &PyAny) -> Result<Self, Error> {
+        if !callable.is_callable() {
+            return Err(anyhow!("Expected a callable"));
+        }
+
         Ok(Task {
             name: callable
                 .to_string()
@@ -33,7 +37,7 @@ impl Task {
                 .to_string(),
             inputs: HashMap::new(),
             triggered: 0,
-            callable,
+            callable: callable.extract()?,
         })
     }
 }

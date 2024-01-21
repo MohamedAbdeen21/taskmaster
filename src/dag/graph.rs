@@ -53,13 +53,20 @@ impl Graph {
 
         Ok(())
     }
-}
 
-impl Graph {
     pub fn next(&self) -> NaiveDateTime {
         self.expression.next(Utc::now().naive_utc()).unwrap()
     }
 
+    pub fn start(&mut self) -> Result<()> {
+        for root in self.roots.clone().into_iter() {
+            self.run("main", root, self.args.clone())?
+        }
+        Ok(())
+    }
+}
+
+impl Graph {
     fn run(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) -> Result<()> {
         let t = self.tasks.get_mut(&task).unwrap();
 
@@ -75,13 +82,6 @@ impl Graph {
             }
         }
 
-        Ok(())
-    }
-
-    pub fn start(&mut self) -> Result<()> {
-        for root in self.roots.clone().into_iter() {
-            self.run("main", root, self.args.clone())?
-        }
         Ok(())
     }
 }
