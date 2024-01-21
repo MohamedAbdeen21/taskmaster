@@ -10,7 +10,6 @@ use std::collections::HashMap;
 pub struct Graph {
     graph: HashMap<String, Vec<String>>,
     tasks: HashMap<String, Task>,
-    #[allow(dead_code)] // I usually override the cron scheduler while testing
     pub expression: Expression,
     roots: Vec<String>,
     args: Option<Py<PyDict>>,
@@ -35,10 +34,6 @@ impl Graph {
         self.tasks.insert(name, root);
     }
 
-    pub fn next(&self) -> NaiveDateTime {
-        self.expression.next(Utc::now().naive_utc()).unwrap()
-    }
-
     pub fn add_edge(&mut self, parent: Task, children: Vec<Task>) -> Result<()> {
         let rn = parent.name.clone();
 
@@ -61,6 +56,10 @@ impl Graph {
 }
 
 impl Graph {
+    pub fn next(&self) -> NaiveDateTime {
+        self.expression.next(Utc::now().naive_utc()).unwrap()
+    }
+
     fn run(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) -> Result<()> {
         let t = self.tasks.get_mut(&task).unwrap();
 

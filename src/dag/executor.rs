@@ -20,25 +20,20 @@ impl Executor {
 
     pub fn add(&mut self, graph: Graph) {
         let next = graph.expression.next(Utc::now().naive_utc()).unwrap();
-        let insertion_index = self
-            .schedule
-            .iter()
-            .position(|v| v.0 <= next)
-            .unwrap_or(self.schedule.len());
 
-        let new_bucket = (next, vec![graph.clone()]);
+        for (index, bucket) in self.schedule.iter_mut().enumerate() {
+            if bucket.0 == next {
+                bucket.1.push(graph);
+                return;
+            }
 
-        if insertion_index == self.schedule.len() {
-            self.schedule.push(new_bucket);
-            return;
+            if bucket.0 < next {
+                self.schedule.insert(index + 1, (next, vec![graph]));
+                return;
+            }
         }
 
-        let bucket = self.schedule.get_mut(insertion_index).unwrap();
-        if bucket.0 == next {
-            bucket.1.push(graph);
-        } else {
-            self.schedule.insert(insertion_index, new_bucket)
-        }
+        self.schedule.push((next, vec![graph]));
     }
 
     pub fn start(&mut self) -> Result<()> {
@@ -48,8 +43,6 @@ impl Executor {
                 .schedule
                 .pop()
                 .with_context(|| "Executor doesn't have any graphs")?;
-            // let now = Utc::now().naive_utc();
-            // let next = self.expression.next(now)?;
             sleep(next.signed_duration_since(now).to_std()?);
             // sleep(Duration::seconds(5).to_std()?);
             for mut graph in graphs {

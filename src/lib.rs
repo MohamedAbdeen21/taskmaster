@@ -13,10 +13,7 @@ fn tm(py: Python, module: &PyModule) -> PyResult<()> {
 
     // allow syntax `from tm.cron import ...`
     py.run(
-        "\
-import sys
-sys.modules['tm.cron'] = cron
-    ",
+        "import sys; sys.modules['tm.cron'] = cron",
         None,
         Some(module.dict()),
     )?;
