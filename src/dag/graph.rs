@@ -2,6 +2,7 @@ use super::task::{ExecutionError, Task};
 use crate::cron::expression::Expression;
 use anyhow::{bail, Error, Result};
 use chrono::{NaiveDateTime, Utc};
+use itertools::Itertools;
 use pyo3::{prelude::*, types::PyDict};
 use std::collections::HashMap;
 
@@ -28,13 +29,21 @@ impl Graph {
         })
     }
 
-    pub fn add_root(&mut self, root: Task) {
+    pub fn add_root(&mut self, root: &PyAny) -> Result<()> {
+        let root = Task::new(root)?;
         let name = root.name.clone();
         self.roots.push(name.clone());
         self.tasks.insert(name, root);
+        Ok(())
     }
 
-    pub fn add_edge(&mut self, parent: Task, children: Vec<Task>) -> Result<()> {
+    pub fn add_edge(&mut self, parent: &PyAny, children: Vec<&PyAny>) -> Result<()> {
+        let parent = Task::new(parent)?;
+        let children: Vec<_> = children
+            .into_iter()
+            .map(|child| Task::new(child))
+            .try_collect()?;
+
         let rn = parent.name.clone();
 
         self.graph
@@ -59,9 +68,11 @@ impl Graph {
     }
 
     pub fn start(&mut self) -> Result<()> {
-        for root in self.roots.clone().into_iter() {
-            self.run("main", root, self.args.clone())?
-        }
+        self.roots
+            .clone()
+            .into_iter()
+            .map(|root| self.run("main", root, self.args.clone()))
+            .try_collect()?;
         Ok(())
     }
 }
@@ -76,11 +87,13 @@ impl Graph {
             Err(e) => bail!(e),
         };
 
-        if let Some(children) = self.graph.clone().get_mut(&task) {
-            for child in children {
-                self.run(&task, child.clone(), output.clone())?
-            }
-        }
+        self.graph
+            .clone()
+            .get_mut(&task)
+            .unwrap_or(&mut vec![])
+            .iter()
+            .map(|child| self.run(&task, child.clone(), output.clone()))
+            .try_collect()?;
 
         Ok(())
     }

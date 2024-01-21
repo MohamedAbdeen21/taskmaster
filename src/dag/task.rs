@@ -11,7 +11,6 @@ pub enum ExecutionError {
     Fail { t: String, e: String },
 }
 
-#[pyclass]
 #[derive(Clone)]
 pub struct Task {
     pub name: String,
@@ -20,9 +19,7 @@ pub struct Task {
     triggered: usize,
 }
 
-#[pymethods]
 impl Task {
-    #[new]
     pub fn new(callable: &PyAny) -> Result<Self, Error> {
         if !callable.is_callable() {
             return Err(anyhow!("Expected a callable"));
@@ -40,9 +37,7 @@ impl Task {
             callable: callable.extract()?,
         })
     }
-}
 
-impl Task {
     pub fn add_parent(&mut self, parent: &Task) {
         self.inputs.insert(parent.name.clone(), None);
     }

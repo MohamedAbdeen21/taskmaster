@@ -2,7 +2,7 @@ mod cron;
 mod dag;
 
 use cron::expression::Expression;
-use dag::{graph::Graph, task::Task};
+use dag::graph::Graph;
 use pyo3::prelude::*;
 use std::include_str;
 
@@ -16,7 +16,6 @@ fn tm(py: Python, module: &PyModule) -> PyResult<()> {
     let executor = PyModule::from_code(py, exec_impl, "executor.py", "executor").unwrap();
 
     module.add_class::<Graph>()?;
-    module.add_class::<Task>()?;
     module.add_submodule(executor)?;
 
     // expose the class directly, instead of going through the submodule

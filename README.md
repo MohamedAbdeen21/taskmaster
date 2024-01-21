@@ -73,7 +73,7 @@ print(t)
 #### Using the DAG
 
 ```python
-from tm import Task, Graph, Executor
+from tm import Graph, Executor
 
 # The executor handling the DAG
 # takes a scehdule and the parameters to be passed to root 
@@ -84,21 +84,17 @@ graph = Graph(schedule="* * * * *", args={"init":0})
 ##            |                      V
 ##            -----------> print_return_none ----> leaf
 
-@Task
 def root_add_2(main):
     return {"value":main["init"] + 2}
 
-@Task
 def add_3(root_add_2):
     msg = root_add_2["value"]+3
     return {"key": msg}
 
-@Task
 def print_return_none(root_add_2, add_3):
     print(root_add_2["value"] + add_3["key"]) # prints 7
     # Can also return None
 
-@Task
 def leaf(print_return_none):
     print(print_return_none == None) # print true
 
