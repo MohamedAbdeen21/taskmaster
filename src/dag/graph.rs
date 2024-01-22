@@ -1,4 +1,7 @@
-use super::task::{ExecutionError, Task};
+use super::{
+    config_loader::ConfigLoader,
+    task::{ExecutionError, Task},
+};
 use crate::cron::expression::Expression;
 use anyhow::{bail, Error, Result};
 use chrono::{NaiveDateTime, Utc};
@@ -7,25 +10,25 @@ use pyo3::{prelude::*, types::PyDict};
 use std::collections::HashMap;
 
 #[pyclass]
-#[derive(Clone)]
 pub struct Graph {
     graph: HashMap<String, Vec<String>>,
     tasks: HashMap<String, Task>,
     pub expression: Expression,
     roots: Vec<String>,
-    args: Option<Py<PyDict>>,
+    cfg_loader: ConfigLoader,
 }
 
 #[pymethods]
 impl Graph {
     #[new]
-    pub fn new(schedule: &str, args: Option<Py<PyDict>>) -> Result<Self, Error> {
+    // pub fn new(schedule: &str, args: Option<Py<PyDict>>) -> Result<Self, Error> {
+    pub fn new(schedule: &str, config: Option<&str>) -> Result<Self, Error> {
         Ok(Graph {
             expression: Expression::from_str(schedule)?,
             graph: HashMap::new(),
             tasks: HashMap::new(),
             roots: Vec::new(),
-            args,
+            cfg_loader: ConfigLoader::new(config)?,
         })
     }
 
@@ -39,10 +42,7 @@ impl Graph {
 
     pub fn add_edge(&mut self, parent: &PyAny, children: Vec<&PyAny>) -> Result<()> {
         let parent = Task::new(parent)?;
-        let children: Vec<_> = children
-            .into_iter()
-            .map(|child| Task::new(child))
-            .try_collect()?;
+        let children: Vec<_> = children.into_iter().map(Task::new).try_collect()?;
 
         let rn = parent.name.clone();
 
@@ -68,10 +68,12 @@ impl Graph {
     }
 
     pub fn start(&mut self) -> Result<()> {
+        let args: Option<Py<PyDict>> = self.cfg_loader.load()?;
+
         self.roots
             .clone()
             .into_iter()
-            .map(|root| self.run("main", root, self.args.clone()))
+            .map(|root| self.run("config", root, args.clone()))
             .try_collect()?;
         Ok(())
     }

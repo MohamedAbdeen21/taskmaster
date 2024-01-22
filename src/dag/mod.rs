@@ -1,5 +1,7 @@
+mod config_loader;
+
 pub mod graph;
-pub mod task;
+mod task;
 
 #[cfg(test)]
 mod tests;

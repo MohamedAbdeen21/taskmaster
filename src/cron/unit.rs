@@ -59,7 +59,7 @@ impl Unit {
             return Ok((start..=end).collect_vec());
         }
 
-        return Err(anyhow!("Value {} is not valid in field {:?}", v, self));
+        Err(anyhow!("Value {} is not valid in field {:?}", v, self))
     }
 
     pub fn next(&self) -> Self {
@@ -150,7 +150,7 @@ impl Unit {
         }
     }
 
-    fn to_num(&self, value: &str) -> String {
+    fn to_num(self, value: &str) -> String {
         match self {
             Unit::Dow => value
                 .to_lowercase()

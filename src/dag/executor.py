@@ -1,9 +1,7 @@
-from multiprocessing.spawn import is_forking
 import os
 import time
 import signal
 from multiprocessing import Process
-from daemonize import Daemonize, handlers
 from datetime import datetime, timezone
 
 # When PyO3 executes Python code, it has to 
@@ -33,10 +31,10 @@ class Executor:
 
     def wait(self, signum, frame):
         # Signals and handlers are passed to children by default
+        # Ignore in children
         if self.pid != os.getpid():
             return
 
-        print("Got ctrl-c, waiting for tasks")
         while any([handler.is_alive() for handler in self.handlers]):
             time.sleep(1)
 
@@ -44,7 +42,6 @@ class Executor:
 
 
     def start(self):
-        print(os.getpid())
         while True:
             (next, graphs) = self.graphs.pop()
 
@@ -53,14 +50,11 @@ class Executor:
 
             delta = next - now 
 
-            time.sleep(max(0, delta.total_seconds()))
+            # time.sleep(max(0, delta.total_seconds()))
+            time.sleep(5)
             self.handlers = [Process(target=graph.start) for graph in graphs]
 
             [self.add(graph) for graph in graphs]
             [handler.start() for handler in self.handlers]
             [handler.join() for handler in self.handlers]
             self.handlers.clear()
-
-        # pid = "./tm.pid"
-        # daemon = Daemonize(app="tm", pid=pid, action=self.loop)
-        # daemon.start()

@@ -21,7 +21,6 @@ impl Expression {
     #[new]
     pub fn from_str(expression: &str) -> Result<Self, Error> {
         let fields: [String; 5] = expression
-            .trim()
             .split_whitespace()
             .map(|s| s.to_string())
             .collect_vec()
