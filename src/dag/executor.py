@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 class Executor:
     def __init__(self):
         self.graphs = []
-        self.handlers = []
+        self.active_handlers = []
         self.pid = os.getpid()
         signal.signal(signal.SIGINT, self.wait)
 
@@ -35,8 +35,9 @@ class Executor:
         if self.pid != os.getpid():
             return
 
-        while any([handler.is_alive() for handler in self.handlers]):
-            time.sleep(1)
+        print("\nCaught in interrupt signal, waiting for processes to exit")
+        while any([handler.is_alive() for handler in self.active_handlers]):
+            time.sleep(3)
 
         exit()
 
@@ -47,14 +48,15 @@ class Executor:
 
             now = datetime.now(timezone.utc)
             next = next.replace(tzinfo=timezone.utc)
-
             delta = next - now 
 
-            # time.sleep(max(0, delta.total_seconds()))
-            time.sleep(5)
-            self.handlers = [Process(target=graph.start) for graph in graphs]
+            time.sleep(max(0, delta.total_seconds()))
+            # time.sleep(5)
+            handlers = [Process(target=graph.start) for graph in graphs]
 
             [self.add(graph) for graph in graphs]
-            [handler.start() for handler in self.handlers]
-            [handler.join() for handler in self.handlers]
-            self.handlers.clear()
+            [handler.start() for handler in handlers]
+
+            self.active_handlers += handlers
+            self.active_handlers = list(filter(lambda h: h.is_alive(), self.active_handlers))
+

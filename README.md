@@ -8,7 +8,9 @@ Taskmaster is a WIP Orchestration Framework for Python, written in Rust. This pr
 
 - Written in Rust, to support the "Rewrite it in Rust" movement.
 
-- Supports communication between Tasks through passing dicts as returns and parameters. The root task can also accept configs as parameters.
+- Supports communication between Tasks through passing dicts as returns and parameters. The root task can take a json file as input.
+
+- Reloads the root task input file each run, so you can parametrize the DAG during runtime.
 
 - A from-scratch cron expression parser and evaluator. In case you just need a cron parser without the DAG engine.
 
@@ -76,32 +78,36 @@ print(t)
 from tm import Graph, Executor
 
 # The executor handling the DAG
-# takes a scehdule and the parameters to be passed to root 
-# at execution time. Args will be passed as main=args to root
-graph = Graph(schedule="* * * * *", args={"init":0})
+# takes a scehdule and path of json file to be passed to root
+# at execution time. Args will be passed in "config" kwarg to root
 
-## 0 -> root_add_2 --> add3 ---------|
-##            |                      V
-##            -----------> print_return_none ----> leaf
+graph = Graph(schedule="* * * * *")
 
-def root_add_2(main):
-    return {"value":main["init"] + 2}
+##  root_add_2 --> add3 ---------|
+##        |                      V
+##        -----------> print_return_none ----> leaf
 
-def add_3(root_add_2):
-    msg = root_add_2["value"]+3
+# Use **kwargs to ignore input
+def pass_2(**kwargs):
+    return {"value": 2}
+
+# Read parent output using keyword arguments
+def add_3(pass_2):
+    msg = pass_2["value"]+3
     return {"key": msg}
 
-def print_return_none(root_add_2, add_3):
+# Can have multiple parents
+def print_return_none(pass_2, add_3):
     print(root_add_2["value"] + add_3["key"]) # prints 7
     # Can also return None
 
+# Can receive None as input
 def leaf(print_return_none):
     print(print_return_none == None) # print true
 
-
-# Can accept multiple roots
-graph.add_root(root_add_2)
-graph.add_edge(root_add_2, [add_3, print_return_none])
+# define the DAG
+graph.add_root(pass2)
+graph.add_edge(pass2, [add_3, print_return_none])
 graph.add_edge(add_3, [print_return_none])
 graph.add_edge(print_return_none, [leaf])
 
@@ -109,3 +115,41 @@ executor = Executor()
 executor.add(graph)
 executor.start()
 ```
+
+#### Using config files
+
+- Create a json file to be passed to root as argument
+```json
+-- filename: config.json
+{
+    "initial_value": 2
+}
+```
+
+```python
+from tm import Graph, Executor
+
+# Pass the absolute path of the file to the dag, 
+# The config is read every time the dag is executed
+graph = Graph(schedule="* * * * *", config="/src/config.json")
+
+## config --> print_add
+##   |
+##   ---> print_sub
+
+# Use **kwargs to ignore input
+def print_add(config):
+    print(config["initial_value"] + 2) # prints 4
+
+def print_sub(config):
+    print(config["initial_value"] - 2) # prints 0
+
+# Can accept multiple roots
+graph.add_root(print_add)
+graph.add_root(print_sub)
+
+executor = Executor()
+executor.add(graph)
+executor.start()
+```
+
