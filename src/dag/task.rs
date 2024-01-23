@@ -15,7 +15,7 @@ pub enum ExecutionError {
 pub struct Task {
     pub name: String,
     callable: PyObject,
-    inputs: HashMap<String, Option<Py<PyDict>>>,
+    pub inputs: HashMap<String, Option<Py<PyDict>>>,
     triggered: usize,
 }
 

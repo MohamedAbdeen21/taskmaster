@@ -16,10 +16,10 @@ pub fn get_next(values: &[i32], unit: i32) -> (i32, bool) {
 pub fn next_month(time: HashMap<Unit, i32>) -> HashMap<Unit, i32> {
     let mut time = time;
     if time[&Unit::Month] == 12 {
-        *time.get_mut(&Unit::Year).unwrap() += 1;
+        time.entry(Unit::Year).and_modify(|v| *v += 1);
         time = Unit::Month.set(time, 0);
     }
-    *time.get_mut(&Unit::Month).unwrap() += 1;
+    time.entry(Unit::Month).and_modify(|v| *v += 1);
     time = Unit::Day.set(time, 1);
     time = Unit::Hour.set(time, 0);
     // Minutes are either reset or incremented to next value (0)

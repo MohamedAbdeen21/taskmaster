@@ -80,7 +80,12 @@ impl Graph {
 }
 
 impl Graph {
+    fn sort_graph(&self) -> Option<Vec<String>> {
+        todo!()
+    }
+
     fn run(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) -> Result<()> {
+        _ = self.sort_graph();
         let t = self.tasks.get_mut(&task).unwrap();
 
         let output = match t.execute(caller, inputs) {

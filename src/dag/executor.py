@@ -30,6 +30,8 @@ class Executor:
         self.graphs.append((next, [graph]))
 
     def wait(self, signum, frame):
+        _ = signum, frame # silence unused variable error
+
         # Signals and handlers are passed to children by default
         # Ignore in children
         if self.pid != os.getpid():
@@ -50,8 +52,8 @@ class Executor:
             next = next.replace(tzinfo=timezone.utc)
             delta = next - now 
 
-            time.sleep(max(0, delta.total_seconds()))
-            # time.sleep(5)
+            # time.sleep(max(0, delta.total_seconds()))
+            time.sleep(5)
             handlers = [Process(target=graph.start) for graph in graphs]
 
             [self.add(graph) for graph in graphs]
