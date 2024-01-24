@@ -3,7 +3,6 @@ use itertools::Itertools;
 use pyo3::{prelude::*, types::IntoPyDict, types::PyDict};
 use std::collections::HashMap;
 
-#[derive(Clone)]
 pub struct Task {
     pub name: String,
     pub inputs: HashMap<String, Option<Py<PyDict>>>,

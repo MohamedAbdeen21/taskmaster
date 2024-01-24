@@ -76,7 +76,7 @@ impl Graph {
             .collect();
 
         queue.iter().for_each(|task| {
-            in_degrees.remove(task).unwrap();
+            in_degrees.remove(task);
         });
 
         loop {
@@ -119,11 +119,13 @@ impl Graph {
         let args: Option<Py<PyDict>> = self.cfg_loader.load()?;
 
         for task_name in self.execution_order.clone().iter() {
-            let mut task = self.tasks[task_name].clone();
+            let task = self.tasks.get_mut(task_name).unwrap();
 
+            // root node
             if task.inputs.is_empty() {
                 task.add_input("config", args.clone());
             };
+
             let output = task.execute()?;
 
             self.graph
