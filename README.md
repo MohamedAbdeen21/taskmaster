@@ -117,9 +117,8 @@ executor.start()
 
 #### Using config files
 
-- Create a json file to be passed to root as argument
+- Create a json file to be passed to root as argument. Let's call it `config.json`.
 ```json
--- filename: config.json
 {
     "initial_value": 2
 }
