@@ -83,9 +83,9 @@ from tm import Graph, Executor
 
 graph = Graph(schedule="* * * * *")
 
-##  root_add_2 --> add3 ---------|
-##        |                      V
-##        -----------> print_return_none ----> leaf
+##  pass_2 --> add_3 ---------|
+##    |                      V
+##    -----------> print_return_none ----> leaf
 
 # Use **kwargs to ignore input
 def pass_2(**kwargs):
@@ -106,7 +106,6 @@ def leaf(print_return_none):
     print(print_return_none == None) # print true
 
 # define the DAG
-graph.add_root(pass2)
 graph.add_edge(pass2, [add_3, print_return_none])
 graph.add_edge(add_3, [print_return_none])
 graph.add_edge(print_return_none, [leaf])
@@ -144,9 +143,8 @@ def print_add(config):
 def print_sub(config):
     print(config["initial_value"] - 2) # prints 0
 
-# Can accept multiple roots
-graph.add_root(print_add)
-graph.add_root(print_sub)
+graph.add_edge(print_add, [])
+graph.add_edge(print_sub, [])
 
 executor = Executor()
 executor.add(graph)
