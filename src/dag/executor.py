@@ -18,6 +18,14 @@ class Executor:
         signal.signal(signal.SIGINT, self.wait)
 
     def add(self, graph):
+        if graph.is_empty():
+            print("Graph is empty")
+            return
+
+        graph.execution_order = graph.sort()
+        self.schedule(graph)
+
+    def schedule(self, graph):
         next = graph.next()
         for (idx,(dt, graphs)) in enumerate(self.graphs):
             if dt == next:
@@ -39,7 +47,7 @@ class Executor:
 
         print("\nCaught in interrupt signal, waiting for processes to exit")
         while any([handler.is_alive() for handler in self.active_handlers]):
-            time.sleep(3)
+            time.sleep(2)
 
         exit()
 
@@ -56,7 +64,7 @@ class Executor:
             time.sleep(5)
             handlers = [Process(target=graph.start) for graph in graphs]
 
-            [self.add(graph) for graph in graphs]
+            [self.schedule(graph) for graph in graphs]
             [handler.start() for handler in handlers]
 
             self.active_handlers += handlers

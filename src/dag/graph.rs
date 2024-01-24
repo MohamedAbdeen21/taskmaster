@@ -1,43 +1,32 @@
-use super::{
-    config_loader::ConfigLoader,
-    task::{ExecutionError, Task},
-};
+use super::{config_loader::ConfigLoader, task::Task};
 use crate::cron::expression::Expression;
-use anyhow::{bail, Error, Result};
+use anyhow::{anyhow, Error, Result};
 use chrono::{NaiveDateTime, Utc};
 use itertools::Itertools;
 use pyo3::{prelude::*, types::PyDict};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 #[pyclass]
 pub struct Graph {
     graph: HashMap<String, Vec<String>>,
     tasks: HashMap<String, Task>,
-    pub expression: Expression,
-    roots: Vec<String>,
+    expression: Expression,
     cfg_loader: ConfigLoader,
+    #[pyo3(set)]
+    execution_order: Vec<String>,
 }
 
 #[pymethods]
 impl Graph {
     #[new]
-    // pub fn new(schedule: &str, args: Option<Py<PyDict>>) -> Result<Self, Error> {
     pub fn new(schedule: &str, config: Option<&str>) -> Result<Self, Error> {
         Ok(Graph {
             expression: Expression::from_str(schedule)?,
+            cfg_loader: ConfigLoader::new(config)?,
             graph: HashMap::new(),
             tasks: HashMap::new(),
-            roots: Vec::new(),
-            cfg_loader: ConfigLoader::new(config)?,
+            execution_order: Vec::new(),
         })
-    }
-
-    pub fn add_root(&mut self, root: &PyAny) -> Result<()> {
-        let root = Task::new(root)?;
-        let name = root.name.clone();
-        self.roots.push(name.clone());
-        self.tasks.insert(name, root);
-        Ok(())
     }
 
     pub fn add_edge(&mut self, parent: &PyAny, children: Vec<&PyAny>) -> Result<()> {
@@ -67,40 +56,87 @@ impl Graph {
         self.expression.next(Utc::now().naive_utc()).unwrap()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.tasks.is_empty()
+    }
+
+    pub fn sort(&self) -> Result<Vec<String>> {
+        let mut sorted = vec![];
+        let mut in_degrees: HashMap<String, usize> = self
+            .tasks
+            .values()
+            .map(|task| (task.name.clone(), task.inputs.len()))
+            .collect();
+
+        let mut queue: VecDeque<_> = in_degrees
+            .iter()
+            .filter(|(_, v)| **v == 0)
+            .map(|(k, _)| k)
+            .cloned()
+            .collect();
+
+        queue.iter().for_each(|task| {
+            in_degrees.remove(task).unwrap();
+        });
+
+        loop {
+            if queue.is_empty() && in_degrees.is_empty() {
+                return Ok(sorted);
+            }
+
+            if queue.is_empty() && !in_degrees.is_empty() {
+                return Err(anyhow!("Graph has a cycle"));
+            }
+
+            let task = queue.pop_front().unwrap();
+
+            sorted.push(task.clone());
+
+            self.graph
+                .get(&task)
+                .unwrap_or(&vec![])
+                .iter()
+                .for_each(|child| {
+                    in_degrees.entry(child.clone()).and_modify(|v| *v -= 1);
+                });
+
+            let next = in_degrees
+                .iter()
+                .filter(|(_, v)| **v == 0)
+                .map(|(k, _)| k)
+                .cloned()
+                .collect_vec();
+
+            next.iter().for_each(|task| {
+                in_degrees.remove(task).unwrap();
+            });
+
+            queue.extend(next);
+        }
+    }
+
     pub fn start(&mut self) -> Result<()> {
         let args: Option<Py<PyDict>> = self.cfg_loader.load()?;
 
-        self.roots
-            .clone()
-            .into_iter()
-            .map(|root| self.run("config", root, args.clone()))
-            .try_collect()?;
-        Ok(())
-    }
-}
+        for task_name in self.execution_order.clone().iter() {
+            let mut task = self.tasks[task_name].clone();
 
-impl Graph {
-    fn sort_graph(&self) -> Option<Vec<String>> {
-        todo!()
-    }
+            if task.inputs.is_empty() {
+                task.add_input("config", args.clone());
+            };
+            let output = task.execute()?;
 
-    fn run(&mut self, caller: &str, task: String, inputs: Option<Py<PyDict>>) -> Result<()> {
-        _ = self.sort_graph();
-        let t = self.tasks.get_mut(&task).unwrap();
-
-        let output = match t.execute(caller, inputs) {
-            Ok(v) => v,
-            Err(ExecutionError::NotYet) => return Ok(()),
-            Err(e) => bail!(e),
-        };
-
-        self.graph
-            .clone()
-            .get_mut(&task)
-            .unwrap_or(&mut vec![])
-            .iter()
-            .map(|child| self.run(&task, child.clone(), output.clone()))
-            .try_collect()?;
+            self.graph
+                .get(task_name)
+                .unwrap_or(&vec![])
+                .iter()
+                .for_each(|child| {
+                    self.tasks
+                        .get_mut(child)
+                        .unwrap()
+                        .add_input(&task_name.clone(), output.clone())
+                })
+        }
 
         Ok(())
     }
