@@ -1,9 +1,8 @@
+use super::unit::Unit;
 use chrono::{Datelike, NaiveDate};
 use days_in_month::days_in_month;
 use itertools::Itertools;
 use std::collections::HashMap;
-
-use super::unit::Unit;
 
 pub fn get_next(values: &[i32], unit: i32) -> (i32, bool) {
     if let Some(v) = values.iter().find(|&&v| v > unit) {

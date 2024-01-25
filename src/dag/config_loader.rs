@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use pyo3::{prelude::*, types::PyDict};
-use std::fs::metadata;
 
 // Can't keep state, as PyO3 always passes copies of the
 // Python Objects. If we want to cache results to avoid
@@ -13,17 +12,11 @@ pub struct ConfigLoader {
 }
 
 impl ConfigLoader {
-    pub fn new(file: Option<&str>) -> Result<Self> {
-        if let Some(file) = file {
-            let _ = metadata(file)?.modified()?; // ensure that we can read the file
-            return Ok(ConfigLoader {
-                file: Some(file.to_string()),
-            });
-        };
-
-        Ok(ConfigLoader { file: None })
+    pub fn new(file: Option<String>) -> Result<Self> {
+        Ok(ConfigLoader { file })
     }
-    pub fn load(&mut self) -> Result<Option<Py<PyDict>>> {
+
+    pub fn load(&self) -> Result<Option<Py<PyDict>>> {
         if self.file.is_none() {
             return Ok(None);
         }

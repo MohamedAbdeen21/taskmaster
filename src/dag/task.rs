@@ -1,11 +1,12 @@
 use anyhow::{anyhow, Result};
-use itertools::Itertools;
 use pyo3::{prelude::*, types::IntoPyDict, types::PyDict};
 use std::collections::HashMap;
 
+pub type Message = Option<Py<PyDict>>;
+
 pub struct Task {
     pub name: String,
-    pub inputs: HashMap<String, Option<Py<PyDict>>>,
+    pub inputs: HashMap<String, Message>,
     callable: PyObject,
 }
 
@@ -31,14 +32,14 @@ impl Task {
         self.inputs.insert(parent.name.clone(), None);
     }
 
-    pub fn add_input(&mut self, name: &str, value: Option<Py<PyDict>>) {
+    pub fn add_input(&mut self, name: &str, value: Message) {
         self.inputs.insert(name.to_string(), value);
     }
 
-    pub fn execute(&mut self) -> Result<Option<Py<PyDict>>> {
-        Ok(Python::with_gil(|py| -> PyResult<Option<Py<PyDict>>> {
-            let args = self.inputs.iter().collect_vec().into_py_dict(py);
+    pub fn execute(&self) -> PyResult<Message> {
+        Python::with_gil(|py| -> PyResult<Message> {
+            let args = self.inputs.clone().into_py_dict(py);
             self.callable.call(py, (), Some(args))?.extract(py)
-        })?)
+        })
     }
 }

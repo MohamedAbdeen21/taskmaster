@@ -1,9 +1,9 @@
-use super::{config_loader::ConfigLoader, task::Task};
+use super::{config_loader::ConfigLoader, task::Message, task::Task};
 use crate::cron::expression::Expression;
 use anyhow::{anyhow, Error, Result};
 use chrono::{NaiveDateTime, Utc};
 use itertools::Itertools;
-use pyo3::{prelude::*, types::PyDict};
+use pyo3::prelude::*;
 use std::collections::{HashMap, VecDeque};
 
 #[pyclass]
@@ -19,7 +19,7 @@ pub struct Graph {
 #[pymethods]
 impl Graph {
     #[new]
-    pub fn new(schedule: &str, config: Option<&str>) -> Result<Self, Error> {
+    pub fn new(schedule: &str, config: Option<String>) -> Result<Self, Error> {
         Ok(Graph {
             expression: Expression::from_str(schedule)?,
             cfg_loader: ConfigLoader::new(config)?,
@@ -116,7 +116,7 @@ impl Graph {
     }
 
     pub fn start(&mut self) -> Result<()> {
-        let args: Option<Py<PyDict>> = self.cfg_loader.load()?;
+        let args: Message = self.cfg_loader.load()?;
 
         for task_name in self.execution_order.clone().iter() {
             let task = self.tasks.get_mut(task_name).unwrap();

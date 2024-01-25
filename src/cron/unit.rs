@@ -29,7 +29,7 @@ impl Unit {
         };
 
         if v == "*" {
-            return Ok((start..=end).collect_vec());
+            return Ok((start..=end).collect());
         }
 
         if v.contains('/') {
@@ -38,9 +38,9 @@ impl Unit {
             if r.contains('-') {
                 let (l, r) = v.split_once('/').unwrap().0.split_once('-').unwrap();
                 let (start, end) = self.validate_range(l.parse()?, r.parse()?)?;
-                return Ok((start..=end).step_by(step).collect_vec());
+                return Ok((start..=end).step_by(step).collect());
             } else if r == "*" {
-                return Ok((start..=end).step_by(step).collect_vec());
+                return Ok((start..=end).step_by(step).collect());
             } else {
                 return Err(anyhow!(
                     "Intervals must be used with a range (* or an explicit range)"
@@ -51,12 +51,12 @@ impl Unit {
         if !v.contains('/') && v.contains('-') {
             let (l, r) = v.split_once('-').unwrap();
             (start, end) = self.validate_range(l.parse()?, r.parse()?)?;
-            return Ok((start..=end).collect_vec());
+            return Ok((start..=end).collect());
         }
 
         if let Ok(num) = v.parse() {
             (start, end) = self.validate_range(num, num)?;
-            return Ok((start..=end).collect_vec());
+            return Ok((start..=end).collect());
         }
 
         Err(anyhow!("Value {} is not valid in field {:?}", v, self))

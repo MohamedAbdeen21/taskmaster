@@ -98,7 +98,7 @@ def add_3(pass_2):
 
 # Can have multiple parents
 def print_return_none(pass_2, add_3):
-    print(root_add_2["value"] + add_3["key"]) # prints 7
+    print(pass_2["value"] + add_3["key"]) # prints 7
     # Can also return None
 
 # Can receive None as input
@@ -106,7 +106,7 @@ def leaf(print_return_none):
     print(print_return_none == None) # print true
 
 # define the DAG
-graph.add_edge(pass2, [add_3, print_return_none])
+graph.add_edge(pass_2, [add_3, print_return_none])
 graph.add_edge(add_3, [print_return_none])
 graph.add_edge(print_return_none, [leaf])
 
