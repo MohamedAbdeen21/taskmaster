@@ -29,10 +29,7 @@ impl Graph {
         })
     }
 
-    pub fn add_edge(&mut self, parent: &PyAny, children: Vec<&PyAny>) -> Result<()> {
-        let parent = Task::new(parent)?;
-        let children: Vec<_> = children.into_iter().map(Task::new).try_collect()?;
-
+    pub fn add_edge(&mut self, parent: &Task, children: Vec<Task>) -> Result<()> {
         let rn = parent.name.clone();
 
         self.graph
@@ -47,7 +44,7 @@ impl Graph {
                 .add_parent(&parent);
         }
 
-        self.tasks.entry(rn).or_insert(parent);
+        self.tasks.entry(rn).or_insert(parent.clone());
 
         Ok(())
     }
@@ -115,7 +112,7 @@ impl Graph {
         }
     }
 
-    pub fn start(&mut self) -> Result<()> {
+    pub fn start(&mut self, py: Python) -> Result<()> {
         let args: Message = self.cfg_loader.load()?;
 
         for task_name in self.execution_order.clone().iter() {
@@ -126,7 +123,7 @@ impl Graph {
                 task.add_input("config", args.clone());
             };
 
-            let output = task.execute()?;
+            let output = task.start(py)?;
 
             self.graph
                 .get(task_name)
