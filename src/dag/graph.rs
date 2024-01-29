@@ -119,7 +119,7 @@ impl Graph {
             let task = self.tasks.get_mut(task_name).unwrap();
 
             // root node
-            if task.inputs.is_empty() {
+            if task.inputs.is_empty() && args.is_some() {
                 task.add_input("config", args.clone());
             };
 

@@ -76,4 +76,3 @@ docs/_build/
 Cargo.lock
 
 /test/
-/examples/

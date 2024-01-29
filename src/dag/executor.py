@@ -11,11 +11,14 @@ from datetime import datetime, timezone
 # Threads share the same GIL and attempting to acquire
 # the GIL while acquired panics the thread.
 class Executor:
-    def __init__(self):
+    def __init__(self, graphs = []):
         self.graphs = []
         self.active_handlers = []
         self.pid = os.getpid()
         signal.signal(signal.SIGINT, self.wait)
+
+        for graph in graphs:
+            self.add(graph)
 
     def add(self, graph):
         if graph.is_empty():
