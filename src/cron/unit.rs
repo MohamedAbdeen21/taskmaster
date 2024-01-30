@@ -73,8 +73,7 @@ impl Unit {
         }
     }
 
-    pub fn set(&self, time: HashMap<Unit, i32>, value: i32) -> HashMap<Unit, i32> {
-        let mut time = time;
+    pub fn set(&self, mut time: HashMap<Unit, i32>, value: i32) -> HashMap<Unit, i32> {
         time.insert(*self, value);
         time
     }

@@ -1,6 +1,5 @@
 use super::unit::Unit;
 use chrono::{Datelike, NaiveDate};
-use days_in_month::days_in_month;
 use itertools::Itertools;
 use std::collections::HashMap;
 
@@ -70,4 +69,22 @@ pub fn adjust_days_to_month(
 
     schedule.insert(Unit::Day, days);
     schedule
+}
+
+fn is_leap_year(year: i32) -> bool {
+    return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
+}
+
+fn days_in_month(year: i32, month: i32) -> i32 {
+    return match month {
+        2 => {
+            if is_leap_year(year) {
+                29
+            } else {
+                28
+            }
+        }
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
 }
