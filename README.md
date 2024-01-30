@@ -4,15 +4,17 @@ Taskmaster is a WIP Orchestration Framework for Python, written in Rust. This pr
 
 ## Features
 
-- Simple API. With decorators for Task creation and message passing using returns and arguments.
-
 - Written in Rust, to support the "Rewrite it in Rust" movement.
 
-- Supports communication between Tasks through passing dicts as returns and parameters. The root task can take a json file as input.
+- Retry on fails, with configurable retry delays and exponential backoff.
 
-- Reloads the root task input file each run, so you can parametrize the DAG during runtime.
+- Supports communication between Tasks through passing dicts as returns and using parent function name as argument.
+
+- Reloads the DAG config file each run, so you can parametrize the DAG during runtime.
 
 - A from-scratch cron expression parser and evaluator. In case you just need a cron parser without the DAG engine.
+
+- Simple API. Check examples folder to get started.
 
 ## Getting Started
 
@@ -36,6 +38,8 @@ Taskmaster is a WIP Orchestration Framework for Python, written in Rust. This pr
    ```
 
 ### Example Usage
+
+Check the `examples` folder for more examples.
 
 #### Using the cron submodule
 ```python
@@ -75,7 +79,7 @@ print(t)
 #### Using the DAG
 
 ```python
-from tm import Graph, Executor
+from tm import Graph, Executor, task
 
 # The executor handling the DAG
 # takes a scehdule and path of json file to be passed to root
@@ -88,20 +92,24 @@ graph = Graph(schedule="* * * * *")
 ##    -----------> print_return_none ----> leaf
 
 # Use **kwargs to ignore input
+@task()
 def pass_2(**kwargs):
     return {"value": 2}
 
 # Read parent output using keyword arguments
+@task()
 def add_3(pass_2):
     msg = pass_2["value"]+3
     return {"key": msg}
 
 # Can have multiple parents
+@task()
 def print_return_none(pass_2, add_3):
     print(pass_2["value"] + add_3["key"]) # prints 7
     # Can also return None
 
 # Can receive None as input
+@task()
 def leaf(print_return_none):
     print(print_return_none == None) # print true
 
@@ -125,7 +133,7 @@ executor.start()
 ```
 
 ```python
-from tm import Graph, Executor
+from tm import Graph, Executor, task
 
 # Pass the absolute path of the file to the dag, 
 # The config is read every time the dag is executed
@@ -136,9 +144,11 @@ graph = Graph(schedule="* * * * *", config="/src/config.json")
 ##   ---> print_sub
 
 # Use **kwargs to ignore input
+@task()
 def print_add(config):
     print(config["initial_value"] + 2) # prints 4
 
+@task()
 def print_sub(config):
     print(config["initial_value"] - 2) # prints 0
 

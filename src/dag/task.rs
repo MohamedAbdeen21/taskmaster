@@ -22,7 +22,6 @@ pub struct Task {
 
 #[pyfunction]
 pub fn task(
-    name: Option<String>,
     retries: Option<u64>,
     retry_delay: Option<f64>,
     backoff: Option<f64>,
@@ -35,14 +34,12 @@ pub fn task(
             retries: retries.unwrap_or_default(),
             retry_delay: retry_delay.unwrap_or_default(),
             backoff: backoff.unwrap_or_default(),
-            name: name.clone().unwrap_or(
-                callable
-                    .to_string()
-                    .split_whitespace()
-                    .nth(1)
-                    .unwrap()
-                    .to_string(),
-            ),
+            name: callable
+                .to_string()
+                .split_whitespace()
+                .nth(1)
+                .unwrap()
+                .to_string(),
             callable,
         });
     };
