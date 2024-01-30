@@ -22,7 +22,7 @@ impl Graph {
     pub fn new(schedule: &str, config: Option<String>) -> Result<Self, Error> {
         Ok(Graph {
             expression: Expression::from_str(schedule)?,
-            cfg_loader: ConfigLoader::new(config)?,
+            cfg_loader: ConfigLoader::new(config),
             graph: HashMap::new(),
             tasks: HashMap::new(),
             execution_order: Vec::new(),
@@ -30,10 +30,8 @@ impl Graph {
     }
 
     pub fn add_edge(&mut self, parent: &Task, children: Vec<Task>) -> Result<()> {
-        let rn = parent.name.clone();
-
         self.graph
-            .entry(rn.clone())
+            .entry(parent.name.clone())
             .or_default()
             .extend(children.iter().map(|c| c.name.clone()));
 
@@ -44,7 +42,9 @@ impl Graph {
                 .add_parent(&parent);
         }
 
-        self.tasks.entry(rn).or_insert(parent.clone());
+        self.tasks
+            .entry(parent.name.clone())
+            .or_insert(parent.clone());
 
         Ok(())
     }

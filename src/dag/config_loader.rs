@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use pyo3::{prelude::*, types::PyDict};
 
-// Can't keep state, as PyO3 always passes copies of the
-// Python Objects. If we want to cache results to avoid
+// Can't keep state as graphs are ran in subprocesses.
+// If we want to cache results to avoid
 // reloading the file every single run, we'll have to
 // implement this in Python (i.e. in the executor)
+// or use a state file
 
 #[derive(Debug)]
 pub struct ConfigLoader {
@@ -12,8 +13,8 @@ pub struct ConfigLoader {
 }
 
 impl ConfigLoader {
-    pub fn new(file: Option<String>) -> Result<Self> {
-        Ok(ConfigLoader { file })
+    pub fn new(file: Option<String>) -> Self {
+        ConfigLoader { file }
     }
 
     pub fn load(&self) -> Result<Option<Py<PyDict>>> {
