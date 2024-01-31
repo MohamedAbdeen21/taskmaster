@@ -26,18 +26,16 @@ pub fn next_month(time: HashMap<Unit, i32>) -> HashMap<Unit, i32> {
 }
 
 pub fn adjust_days_to_month(
-    schedule: &HashMap<Unit, Vec<i32>>,
+    mut schedule: HashMap<Unit, Vec<i32>>,
     year: i32,
     month: i32,
 ) -> HashMap<Unit, Vec<i32>> {
-    let mut schedule = schedule.clone();
-
     // Month is not in schedule and therefore has no days
     if !schedule[&Unit::Month].contains(&(month as _)) {
         return schedule;
     }
 
-    let max_days = days_in_month(year, month as _) as i32;
+    let max_days = days_in_month(year, month as _);
 
     let first_dow = NaiveDate::from_ymd_opt(year, month as _, 1)
         .unwrap()
@@ -56,7 +54,7 @@ pub fn adjust_days_to_month(
         .flat_map(|day| (0..5).map(|i| day + 7 * i).collect_vec())
         .collect_vec();
 
-    let days = schedule
+    let days: Vec<i32> = schedule
         .get(&Unit::Dom)
         .unwrap_or(&vec![])
         .iter()
@@ -72,11 +70,11 @@ pub fn adjust_days_to_month(
 }
 
 fn is_leap_year(year: i32) -> bool {
-    return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
+    (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
 }
 
 fn days_in_month(year: i32, month: i32) -> i32 {
-    return match month {
+    match month {
         2 => {
             if is_leap_year(year) {
                 29
@@ -86,5 +84,5 @@ fn days_in_month(year: i32, month: i32) -> i32 {
         }
         4 | 6 | 9 | 11 => 30,
         _ => 31,
-    };
+    }
 }

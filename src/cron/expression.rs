@@ -1,14 +1,15 @@
+use super::helpers::{adjust_days_to_month, get_next, next_month};
+use super::unit::Unit;
 use anyhow::{anyhow, Error, Result};
 use chrono::{Datelike, NaiveDateTime, Utc};
 use itertools::Itertools;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 
-use super::helpers::{adjust_days_to_month, get_next, next_month};
-use super::unit::Unit;
-
 const DOM: usize = 2;
 const DOW: usize = 4;
+
+type Schedule = HashMap<Unit, Vec<i32>>;
 
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -46,7 +47,7 @@ impl Expression {
     fn calculate_next_time(
         unit: Unit,
         reset: bool,
-        schedule: &HashMap<Unit, Vec<i32>>,
+        schedule: &Schedule,
         time: HashMap<Unit, i32>,
     ) -> Result<(HashMap<Unit, i32>, bool)> {
         let mut time = time;
@@ -62,7 +63,7 @@ impl Expression {
                 return Err(anyhow!("Invalid Expression"));
             }
             time = next_month(time);
-            schedule = adjust_days_to_month(&schedule, time[&Unit::Year], time[&Unit::Month])
+            schedule = adjust_days_to_month(schedule, time[&Unit::Year], time[&Unit::Month])
         }
 
         if unit == Unit::None {
@@ -98,7 +99,7 @@ impl Expression {
             // The month has changed, re-calculate the dom and dow
             // and reset lower fields
             if unit == Unit::Month {
-                schedule = adjust_days_to_month(&schedule, time[&Unit::Year], time[&Unit::Month]);
+                schedule = adjust_days_to_month(schedule, time[&Unit::Year], time[&Unit::Month]);
                 (time, _) = Self::calculate_next_time(unit.next(), true, &schedule, time)?;
             }
 
@@ -112,7 +113,7 @@ impl Expression {
 
             // The month has changed, re-calculate the dom and dow
             if unit == Unit::Month {
-                schedule = adjust_days_to_month(&schedule, time[&Unit::Year], time[&Unit::Month]);
+                schedule = adjust_days_to_month(schedule, time[&Unit::Year], time[&Unit::Month]);
             }
 
             // reset lower fields
@@ -123,7 +124,7 @@ impl Expression {
         Ok((time, false))
     }
 
-    fn create_schedule(&self, year: i32, month: i32) -> Result<HashMap<Unit, Vec<i32>>, Error> {
+    fn create_schedule(&self, year: i32, month: i32) -> Result<Schedule> {
         let mut schedule = HashMap::with_capacity(7); // 7 variants of Unit
         let mut ignore = Vec::new();
 
@@ -158,9 +159,9 @@ impl Expression {
                 range.extend(r);
             }
 
-            schedule.insert(unit, range.into_iter().sorted().collect::<Vec<_>>());
+            schedule.insert(unit, range.into_iter().sorted().collect_vec());
         }
 
-        Ok(adjust_days_to_month(&schedule, year, month))
+        Ok(adjust_days_to_month(schedule, year, month))
     }
 }

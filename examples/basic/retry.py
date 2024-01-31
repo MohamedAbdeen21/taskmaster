@@ -10,7 +10,7 @@ def can_fail():
         raise(ValueError)
     return None
 
-graph = Graph(schedule="* * * * *")
+graph = Graph(name="retry demo", schedule="* * * * *")
 graph.add_edges([can_fail])
 
 Executor(graphs=[graph]).start()

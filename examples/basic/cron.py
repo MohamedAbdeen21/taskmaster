@@ -31,5 +31,12 @@ from datetime import datetime
 # and every Monday of March
 expr = Expression("1-2,*/15 0 1 3 2")
 t = datetime(2024,1,31,20)
+
 t = expr.next(t)
-print(t)
+print(t) # 2024-03-01 00:00:00
+t = expr.next(t)
+print(t) # 2024-03-01 00:01:00
+t = expr.next(t)
+print(t) # 2024-03-01 00:02:00
+t = expr.next(t)
+print(t) # 2024-03-01 00:15:00

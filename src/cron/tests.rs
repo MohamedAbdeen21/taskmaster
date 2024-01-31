@@ -347,12 +347,12 @@ fn mix_interval_and_ranges() {
 
 #[test]
 fn should_fail() {
-    assert!(Expression::from_str("0 0 30 2 *").is_err()); // non-existent date
-    assert!(Expression::from_str("x 0 * 2 *").is_err()); // invalid value
-    assert!(Expression::from_str("0 0 * -1 *").is_err()); // invalid value
-    assert!(Expression::from_str("0 0 * mon-wed *").is_err()); // wrong field
-    assert!(Expression::from_str("0 0 * * feb").is_err()); // wrong field
-    assert!(Expression::from_str("0 0 * jun-jan *").is_err()); // wrong order
+    assert!(test("0 0 30 2 *", "", "").is_err()); // non-existent date
+    assert!(test("x 0 * 2 *", "", "").is_err()); // invalid value
+    assert!(test("0 0 * -1 *", "", "").is_err()); // invalid value
+    assert!(test("0 0 * mon-wed *", "", "").is_err()); // wrong field
+    assert!(test("0 0 * * feb", "", "").is_err()); // wrong field
+    assert!(test("0 0 * jun-jan *", "", "").is_err()); // wrong order
 }
 
 #[test]

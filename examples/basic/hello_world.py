@@ -4,7 +4,7 @@ from tm import task, Graph, Executor
 def hello_world():
     print("Hello, world!")
 
-graph = Graph(schedule="* * * * *")
+graph = Graph(name="hello world", schedule="* * * * *")
 
 graph.add_edges([hello_world])
 

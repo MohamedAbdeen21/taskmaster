@@ -57,17 +57,17 @@ impl Task {
 }
 
 impl Task {
-    pub fn add_parent(&mut self, parent: &Task) {
-        self.inputs.insert(parent.name.clone(), None);
+    pub fn add_argument(&mut self, parent: &str) {
+        self.inputs.insert(parent.to_string(), None);
     }
 
-    pub fn add_input(&mut self, name: &str, value: Message) {
+    pub fn set_argument(&mut self, name: &str, value: Message) {
         self.inputs.insert(name.to_string(), value);
     }
 
     pub fn start(&self, py: Python) -> PyResult<Message> {
         let kwargs = Some(self.inputs.clone().into_py_dict(py));
-        let args: &PyTuple = &PyTuple::empty(py);
+        let args: &PyTuple = PyTuple::empty(py);
 
         let mut msg = self.__call__(args, kwargs);
 
@@ -86,6 +86,6 @@ impl Task {
             }
         }
 
-        return msg;
+        msg
     }
 }

@@ -40,7 +40,7 @@ def leaf(add_2, add_3, do_nothing):
     assert do_nothing == None
     print("Leaf received all inputs correctly")
 
-graph = Graph(schedule="* * * * *")
+graph = Graph(name="message passing demo", schedule="* * * * *")
 graph.add_edges([root], [add_2, add_3, do_nothing])
 graph.add_edges([add_2, add_3, do_nothing], [leaf])
 

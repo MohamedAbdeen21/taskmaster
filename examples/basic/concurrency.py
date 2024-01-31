@@ -11,14 +11,14 @@ def sleep_5_secs():
     sleep(5)
     print("Graph 1: Woke up after Graph 2")
 
-graph1 = Graph(schedule="* * * * *")
+graph1 = Graph(name="graph 1", schedule="* * * * *")
 graph1.add_edges([sleep_5_secs])
 
 @task()
 def every_minute():
     print("Graph 2: Hello, world!")
 
-graph2 = Graph(schedule="* * * * *")
+graph2 = Graph(name="graph 2", schedule="* * * * *")
 graph2.add_edges([every_minute])
 
 executor = Executor(graphs=[graph1, graph2])

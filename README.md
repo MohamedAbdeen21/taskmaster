@@ -85,7 +85,7 @@ from tm import Graph, Executor, task
 # takes a scehdule and path of json file to be passed to root
 # at execution time. Args will be passed in "config" kwarg to root
 
-graph = Graph(schedule="* * * * *")
+graph = Graph(name="test workflow", schedule="* * * * *")
 
 ##  pass_2 --> add_3 ---------|
 ##    |                      V
@@ -136,7 +136,11 @@ from tm import Graph, Executor, task
 
 # Pass the absolute path of the file to the dag, 
 # The config is read every time the dag is executed
-graph = Graph(schedule="* * * * *", config="/src/config.json")
+graph = Graph(
+    name="configs demonstration",
+    schedule="* * * * *",
+    config="/src/config.json"
+    )
 
 ## config --> print_add
 ##   |

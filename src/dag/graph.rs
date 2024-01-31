@@ -8,6 +8,7 @@ use std::collections::{HashMap, VecDeque};
 
 #[pyclass]
 pub struct Graph {
+    name: String,
     graph: HashMap<String, Vec<String>>,
     tasks: HashMap<String, Task>,
     expression: Expression,
@@ -19,8 +20,9 @@ pub struct Graph {
 #[pymethods]
 impl Graph {
     #[new]
-    pub fn new(schedule: &str, config: Option<String>) -> Result<Self, Error> {
+    fn new(name: &str, schedule: &str, config: Option<String>) -> Result<Self, Error> {
         Ok(Graph {
+            name: name.to_string(),
             expression: Expression::from_str(schedule)?,
             cfg_loader: ConfigLoader::new(config),
             graph: HashMap::new(),
@@ -29,7 +31,19 @@ impl Graph {
         })
     }
 
-    pub fn add_edges(&mut self, parents: Vec<Task>, children: Option<Vec<Task>>) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
+        if self.is_empty() {
+            return Err(anyhow!("Graph is empty"));
+        }
+
+        if !self.is_sorted() {
+            self.execution_order = self.sort()?;
+        }
+
+        Ok(())
+    }
+
+    fn add_edges(&mut self, parents: Vec<Task>, children: Option<Vec<Task>>) -> Result<()> {
         let children = children.unwrap_or_default();
         for parent in parents {
             self.graph
@@ -41,7 +55,7 @@ impl Graph {
                 self.tasks
                     .entry(child.name.clone())
                     .or_insert(child.clone())
-                    .add_parent(&parent);
+                    .add_argument(&parent.name);
             }
 
             self.tasks
@@ -52,15 +66,15 @@ impl Graph {
         Ok(())
     }
 
-    pub fn next(&self) -> NaiveDateTime {
+    fn next(&self) -> NaiveDateTime {
         self.expression.next(Utc::now().naive_utc()).unwrap()
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.tasks.is_empty()
     }
 
-    pub fn sort(&mut self) -> Result<()> {
+    fn sort(&self) -> Result<Vec<String>> {
         let mut sorted = vec![];
         let mut in_degrees: HashMap<String, usize> = self
             .tasks
@@ -81,8 +95,7 @@ impl Graph {
 
         loop {
             if queue.is_empty() && in_degrees.is_empty() {
-                self.execution_order = sorted;
-                return Ok(());
+                return Ok(sorted);
             }
 
             if queue.is_empty() && !in_degrees.is_empty() {
@@ -116,15 +129,28 @@ impl Graph {
         }
     }
 
-    pub fn start(&mut self, py: Python) -> Result<()> {
+    fn is_sorted(&self) -> bool {
+        !self.execution_order.is_empty()
+    }
+
+    fn start(&mut self, py: Python) -> Result<()> {
         let args: Message = self.cfg_loader.load()?;
+        if let Some(cfg) = &args {
+            println!("{} is running with config {}", self.name, cfg);
+        } else {
+            println!("{} is running with no configs", self.name);
+        }
+
+        if self.is_empty() || !self.is_sorted() {
+            return Err(anyhow!("Please call `commit()` before running the Graph"));
+        }
 
         for task_name in self.execution_order.clone().iter() {
             let task = self.tasks.get_mut(task_name).unwrap();
 
             // root node
             if task.inputs.is_empty() && args.is_some() {
-                task.add_input("config", args.clone());
+                task.set_argument("config", args.clone());
             };
 
             let output = task.start(py)?;
@@ -137,7 +163,7 @@ impl Graph {
                     self.tasks
                         .get_mut(child)
                         .unwrap()
-                        .add_input(&task_name.clone(), output.clone())
+                        .set_argument(&task_name.clone(), output.clone())
                 })
         }
 
