@@ -25,7 +25,7 @@ class Executor:
             print("Graph is empty")
             return
 
-        graph.execution_order = graph.sort()
+        graph.sort()
         self.schedule(graph)
 
     def schedule(self, graph):
@@ -63,8 +63,8 @@ class Executor:
             next = next.replace(tzinfo=timezone.utc)
             delta = next - now 
 
-            # time.sleep(max(0, delta.total_seconds()))
-            time.sleep(5)
+            time.sleep(max(0, delta.total_seconds()))
+            # time.sleep(5)
             handlers = [Process(target=graph.start) for graph in graphs]
 
             [self.schedule(graph) for graph in graphs]

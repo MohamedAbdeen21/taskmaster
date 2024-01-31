@@ -6,7 +6,7 @@ def hello_world():
 
 graph = Graph(schedule="* * * * *")
 
-graph.add_edge(hello_world, [])
+graph.add_edges([hello_world])
 
 executor = Executor(graphs=[graph])
 executor.start()

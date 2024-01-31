@@ -6,7 +6,7 @@ Taskmaster is a WIP Orchestration Framework for Python, written in Rust. This pr
 
 - Written in Rust, to support the "Rewrite it in Rust" movement.
 
-- Retry on fails, with configurable retry delays and exponential backoff.
+- Retry-on-fail, with configurable retry delays and exponential backoff.
 
 - Supports communication between Tasks through passing dicts as returns and using parent function name as argument.
 
@@ -91,9 +91,8 @@ graph = Graph(schedule="* * * * *")
 ##    |                      V
 ##    -----------> print_return_none ----> leaf
 
-# Use **kwargs to ignore input
 @task()
-def pass_2(**kwargs):
+def pass_2():
     return {"value": 2}
 
 # Read parent output using keyword arguments
@@ -114,9 +113,9 @@ def leaf(print_return_none):
     print(print_return_none == None) # print true
 
 # define the DAG
-graph.add_edge(pass_2, [add_3, print_return_none])
-graph.add_edge(add_3, [print_return_none])
-graph.add_edge(print_return_none, [leaf])
+graph.add_edges([pass_2], [add_3, print_return_none])
+graph.add_edges([add_3], [print_return_none])
+graph.add_edges([print_return_none], [leaf])
 
 executor = Executor()
 executor.add(graph)
@@ -143,7 +142,6 @@ graph = Graph(schedule="* * * * *", config="/src/config.json")
 ##   |
 ##   ---> print_sub
 
-# Use **kwargs to ignore input
 @task()
 def print_add(config):
     print(config["initial_value"] + 2) # prints 4
@@ -152,8 +150,8 @@ def print_add(config):
 def print_sub(config):
     print(config["initial_value"] - 2) # prints 0
 
-graph.add_edge(print_add, [])
-graph.add_edge(print_sub, [])
+# second arguments "children" is None in this case
+graph.add_edges([print_add, print_sub])
 
 executor = Executor()
 executor.add(graph)

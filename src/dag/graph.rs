@@ -29,22 +29,25 @@ impl Graph {
         })
     }
 
-    pub fn add_edge(&mut self, parent: &Task, children: Vec<Task>) -> Result<()> {
-        self.graph
-            .entry(parent.name.clone())
-            .or_default()
-            .extend(children.iter().map(|c| c.name.clone()));
+    pub fn add_edges(&mut self, parents: Vec<Task>, children: Option<Vec<Task>>) -> Result<()> {
+        let children = children.unwrap_or_default();
+        for parent in parents {
+            self.graph
+                .entry(parent.name.clone())
+                .or_default()
+                .extend(children.iter().map(|c| c.name.clone()));
 
-        for child in children.into_iter() {
+            for child in children.clone().into_iter() {
+                self.tasks
+                    .entry(child.name.clone())
+                    .or_insert(child.clone())
+                    .add_parent(&parent);
+            }
+
             self.tasks
-                .entry(child.name.clone())
-                .or_insert(child)
-                .add_parent(&parent);
+                .entry(parent.name.clone())
+                .or_insert(parent.clone());
         }
-
-        self.tasks
-            .entry(parent.name.clone())
-            .or_insert(parent.clone());
 
         Ok(())
     }
@@ -57,7 +60,7 @@ impl Graph {
         self.tasks.is_empty()
     }
 
-    pub fn sort(&self) -> Result<Vec<String>> {
+    pub fn sort(&mut self) -> Result<()> {
         let mut sorted = vec![];
         let mut in_degrees: HashMap<String, usize> = self
             .tasks
@@ -78,7 +81,8 @@ impl Graph {
 
         loop {
             if queue.is_empty() && in_degrees.is_empty() {
-                return Ok(sorted);
+                self.execution_order = sorted;
+                return Ok(());
             }
 
             if queue.is_empty() && !in_degrees.is_empty() {
