@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, Error};
 use chrono::{Datelike, NaiveDateTime, Timelike};
 use itertools::Itertools;
+use std::collections::HashMap;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum Unit {
     Minute,
     Dow,
@@ -74,7 +73,7 @@ impl Unit {
     }
 
     pub fn set(&self, mut time: HashMap<Unit, i32>, value: i32) -> HashMap<Unit, i32> {
-        time.insert(*self, value);
+        time.insert(self.clone(), value);
         time
     }
 

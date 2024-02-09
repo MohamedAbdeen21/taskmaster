@@ -54,16 +54,16 @@ pub fn adjust_days_to_month(
         .flat_map(|day| (0..5).map(|i| day + 7 * i).collect_vec())
         .collect_vec();
 
-    let days: Vec<i32> = schedule
+    let days = schedule
         .get(&Unit::Dom)
         .unwrap_or(&vec![])
-        .iter()
-        .chain(dow_to_dom.iter())
-        .cloned()
-        .filter(|&day| day > 0 && day <= max_days)
+        .clone()
+        .into_iter()
+        .chain(dow_to_dom)
+        .filter(|&day| 0 < day && day <= max_days)
         .sorted()
         .dedup()
-        .collect_vec();
+        .collect();
 
     schedule.insert(Unit::Day, days);
     schedule

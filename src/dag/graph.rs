@@ -1,4 +1,4 @@
-use super::{config_loader::ConfigLoader, task::Message, task::Task};
+use super::{config_loader::ConfigLoader, task::Task};
 use crate::cron::expression::Expression;
 use anyhow::{anyhow, Error, Result};
 use chrono::{NaiveDateTime, Utc};
@@ -13,7 +13,6 @@ pub struct Graph {
     tasks: HashMap<String, Task>,
     expression: Expression,
     cfg_loader: ConfigLoader,
-    #[pyo3(set)]
     execution_order: Vec<String>,
 }
 
@@ -51,16 +50,7 @@ impl Graph {
                 .or_default()
                 .extend(children.iter().map(|c| c.name.clone()));
 
-            for child in children.clone().into_iter() {
-                self.tasks
-                    .entry(child.name.clone())
-                    .or_insert(child.clone())
-                    .add_argument(&parent.name);
-            }
-
-            self.tasks
-                .entry(parent.name.clone())
-                .or_insert(parent.clone());
+            self.tasks.entry(parent.name.clone()).or_insert(parent);
         }
 
         Ok(())
@@ -134,23 +124,24 @@ impl Graph {
     }
 
     fn start(&mut self, py: Python) -> Result<()> {
-        let args: Message = self.cfg_loader.load()?;
+        let args = &self.cfg_loader.load()?;
+
         if let Some(cfg) = &args {
-            println!("{} is running with config {}", self.name, cfg);
+            println!("{} is running with config {}", &self.name, cfg);
         } else {
-            println!("{} is running with no configs", self.name);
+            println!("{} is running with no configs", &self.name);
         }
 
         if self.is_empty() || !self.is_sorted() {
             return Err(anyhow!("Please call `commit()` before running the Graph"));
         }
 
-        for task_name in self.execution_order.clone().iter() {
+        for task_name in self.execution_order.iter() {
             let task = self.tasks.get_mut(task_name).unwrap();
 
             // root node
             if task.inputs.is_empty() && args.is_some() {
-                task.set_argument("config", args.clone());
+                task.set_argument("config", args);
             };
 
             let output = task.start(py)?;
@@ -163,7 +154,7 @@ impl Graph {
                     self.tasks
                         .get_mut(child)
                         .unwrap()
-                        .set_argument(&task_name.clone(), output.clone())
+                        .set_argument(task_name, &output)
                 })
         }
 

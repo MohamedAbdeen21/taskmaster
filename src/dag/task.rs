@@ -1,8 +1,6 @@
 use pyo3::{
     prelude::*,
-    types::IntoPyDict,
-    types::PyDict,
-    types::{PyCFunction, PyTuple},
+    types::{IntoPyDict, PyCFunction, PyDict, PyTuple},
 };
 use std::time::Duration;
 use std::{collections::HashMap, thread::sleep};
@@ -61,8 +59,8 @@ impl Task {
         self.inputs.insert(parent.to_string(), None);
     }
 
-    pub fn set_argument(&mut self, name: &str, value: Message) {
-        self.inputs.insert(name.to_string(), value);
+    pub fn set_argument(&mut self, name: &str, value: &Message) {
+        self.inputs.insert(name.to_string(), value.clone());
     }
 
     pub fn start(&self, py: Python) -> PyResult<Message> {
