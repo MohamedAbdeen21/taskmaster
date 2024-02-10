@@ -148,7 +148,7 @@ impl Unit {
         }
     }
 
-    fn to_num(self, value: &str) -> String {
+    fn to_num(&self, value: &str) -> String {
         match self {
             Unit::Dow => value
                 .to_lowercase()

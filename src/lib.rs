@@ -1,3 +1,4 @@
+mod cache;
 mod cron;
 mod dag;
 

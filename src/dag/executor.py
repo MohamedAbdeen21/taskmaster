@@ -1,4 +1,5 @@
 import os
+from typing import List
 import time
 import signal
 from multiprocessing import Process
@@ -15,6 +16,7 @@ class Executor:
         self.graphs = []
         self.active_handlers = []
         self.pid = os.getpid()
+        self.caught = False
         signal.signal(signal.SIGINT, self.wait)
 
         for graph in graphs:
@@ -44,11 +46,17 @@ class Executor:
         if self.pid != os.getpid():
             return
 
-        print("\nCaught in interrupt signal, waiting for processes to exit")
+        if self.caught:
+            print("\nForcing shutdown ..")
+            [handler.kill() for handler in self.active_handlers]
+            exit(1)
+
+        self.caught = True
+        print("\nCaught an interrupt signal, waiting for processes to exit")
         while any([handler.is_alive() for handler in self.active_handlers]):
             time.sleep(2)
 
-        exit()
+        exit(0)
 
 
     def start(self):

@@ -1,5 +1,8 @@
+use super::task::Message;
+use crate::cache::Cache;
 use anyhow::{Context, Result};
 use pyo3::{prelude::*, types::PyDict};
+use std::{fs, time::SystemTime};
 
 // Can't keep state as graphs are ran in subprocesses.
 // If we want to cache results to avoid
@@ -17,14 +20,27 @@ impl ConfigLoader {
         ConfigLoader { file }
     }
 
-    pub fn load(&self) -> Result<Option<Py<PyDict>>> {
+    pub fn load(&self) -> Result<Message> {
+        let mut db = Cache::new("test_graph", "cfg")?;
+
         if self.file.is_none() {
             return Ok(None);
         }
 
+        let m = fs::metadata(self.file.clone().unwrap())?;
+        let r = m.modified()?;
+
+        if let Some(lm) = db.get_cache::<SystemTime>("last_modified")? {
+            if lm == r {
+                println!("Configs were cached");
+            }
+        }
+
+        db.push_cache::<SystemTime>("last_modified", r)?;
+
         let file = self.file.clone().unwrap();
 
-        let cfg = Python::with_gil(|py| -> Result<Option<Py<PyDict>>> {
+        let cfg = Python::with_gil(|py| -> Result<Message> {
             let locals = PyDict::new(py);
             py.run(
                 &format!("import json; s=json.load(open('{}'))", &file),
@@ -35,6 +51,9 @@ impl ConfigLoader {
             let ret: Py<PyDict> = locals.get_item("s").unwrap().extract()?;
             Ok(Some(ret))
         })?;
+
+        // TODO: Cache args
+        // db.push_cache("cfg", cfg.clone().unwrap().into())?;
 
         Ok(cfg)
     }
