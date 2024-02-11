@@ -134,12 +134,12 @@ executor.start()
 ```python
 from tm import Graph, Executor, task
 
-# Pass the absolute path of the file to the dag, 
+# Pass the path of the file to the dag, 
 # The config is read every time the dag is executed
 graph = Graph(
     name="configs demonstration",
     schedule="* * * * *",
-    config="/src/config.json"
+    config="./config.json"
     )
 
 ## config --> print_add

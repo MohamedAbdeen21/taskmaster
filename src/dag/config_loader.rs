@@ -2,7 +2,7 @@ use super::task::Message;
 use crate::cache::Cache;
 use anyhow::{Context, Result};
 use pyo3::{prelude::*, types::PyDict};
-use std::{fs, time::SystemTime};
+use std::{fs, path::Path, time::SystemTime};
 
 // Can't keep state as graphs are ran in subprocesses.
 // If we want to cache results to avoid
@@ -16,8 +16,20 @@ pub struct ConfigLoader {
 }
 
 impl ConfigLoader {
-    pub fn new(file: Option<String>) -> Self {
-        ConfigLoader { file }
+    pub fn new(path: String, file: Option<String>) -> Result<Self> {
+        if file.is_none() {
+            return Ok(ConfigLoader { file: None });
+        }
+
+        let parent = Path::new(&path).parent().unwrap();
+        let file = file.unwrap();
+        let cfg_path = Path::new(&file);
+
+        let c = ConfigLoader {
+            file: parent.join(cfg_path).to_str().map(|s| s.to_string()),
+        };
+        c.load()?; // ensure file exists and is readable
+        Ok(c)
     }
 
     pub fn load(&self) -> Result<Message> {

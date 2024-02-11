@@ -4,6 +4,7 @@ use anyhow::{anyhow, Error, Result};
 use chrono::{NaiveDateTime, Utc};
 use itertools::Itertools;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use std::collections::{HashMap, VecDeque};
 
 #[pyclass]
@@ -20,10 +21,17 @@ pub struct Graph {
 impl Graph {
     #[new]
     fn new(name: &str, schedule: &str, config: Option<String>) -> Result<Self, Error> {
+        let py_file = Python::with_gil(|py| -> Result<String> {
+            let locals = PyDict::new(py);
+            py.run("import os; s=os.path.abspath(__file__)", None, Some(locals))?;
+            let ret: String = locals.get_item("s").unwrap().extract()?;
+            Ok(ret)
+        })?;
+
         Ok(Graph {
             name: name.to_string(),
             expression: Expression::from_str(schedule)?,
-            cfg_loader: ConfigLoader::new(config),
+            cfg_loader: ConfigLoader::new(py_file, config)?,
             graph: HashMap::new(),
             tasks: HashMap::new(),
             execution_order: Vec::new(),
