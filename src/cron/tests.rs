@@ -10,7 +10,7 @@ fn test(expression: &str, input: &str, expected: &str) -> Result<bool> {
     let expression = Expression::from_str(expression)?;
     let input = utc_from_str(input);
     let expected = utc_from_str(expected);
-    Ok(expression.next(input).unwrap() == expected)
+    Ok(expression.next(input) == expected)
 }
 
 #[test]

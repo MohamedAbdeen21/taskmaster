@@ -1,3 +1,5 @@
+# Using only the cron engine
+
 from tm.cron import Expression
 from datetime import datetime
 
@@ -24,6 +26,7 @@ from datetime import datetime
 # - combinations of all the above
 # --- (40,0-30/15 * * * *)
 # --- (* */12 2 jan,jun thu-sat)
+
 
 # minutes 1,2 and every 15 minutes (0, 15, 30, 45)
 # at hour 00

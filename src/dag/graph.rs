@@ -9,10 +9,11 @@ use std::collections::{HashMap, VecDeque};
 
 #[pyclass]
 pub struct Graph {
+    #[allow(dead_code)]
     name: String,
     graph: HashMap<String, Vec<String>>,
     tasks: HashMap<String, Task>,
-    expression: Expression,
+    expression: Option<Expression>,
     cfg_loader: ConfigLoader,
     execution_order: Vec<String>,
 }
@@ -20,7 +21,7 @@ pub struct Graph {
 #[pymethods]
 impl Graph {
     #[new]
-    fn new(name: &str, schedule: &str, config: Option<String>) -> Result<Self, Error> {
+    fn new(name: String, schedule: &str, config: Option<String>) -> Result<Self, Error> {
         let py_file = Python::with_gil(|py| -> Result<String> {
             let locals = PyDict::new(py);
             py.run("import os; s=os.path.abspath(__file__)", None, Some(locals))?;
@@ -28,9 +29,15 @@ impl Graph {
             Ok(ret)
         })?;
 
+        let expression = if schedule.to_lowercase() == "manual" {
+            None
+        } else {
+            Some(Expression::from_str(schedule)?)
+        };
+
         Ok(Graph {
-            name: name.to_string(),
-            expression: Expression::from_str(schedule)?,
+            name,
+            expression,
             cfg_loader: ConfigLoader::new(py_file, config)?,
             graph: HashMap::new(),
             tasks: HashMap::new(),
@@ -64,12 +71,18 @@ impl Graph {
         Ok(())
     }
 
-    fn next(&self) -> NaiveDateTime {
-        self.expression.next(Utc::now().naive_utc()).unwrap()
+    fn next(&self) -> Option<NaiveDateTime> {
+        self.expression
+            .as_ref()
+            .map(|exp| exp.next(Utc::now().naive_utc()))
     }
 
     fn is_empty(&self) -> bool {
         self.tasks.is_empty()
+    }
+
+    fn is_manual(&self) -> bool {
+        self.expression.is_none()
     }
 
     fn sort(&self) -> Result<Vec<String>> {
@@ -131,14 +144,19 @@ impl Graph {
         !self.execution_order.is_empty()
     }
 
-    fn start(&mut self, py: Python) -> Result<()> {
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn __call__(&mut self, py: Python) -> Result<()> {
         let args = &self.cfg_loader.load()?;
 
-        if let Some(cfg) = &args {
-            println!("{} is running with config {}", &self.name, cfg);
-        } else {
-            println!("{} is running with no configs", &self.name);
-        }
+        // TODO: Logger
+        // if let Some(cfg) = &args {
+        //     println!("{} is running with config {}", &self.name, cfg);
+        // } else {
+        //     println!("{} is running with no configs", &self.name);
+        // }
 
         if self.is_empty() || !self.is_sorted() {
             return Err(anyhow!("Please call `commit()` before running the Graph"));

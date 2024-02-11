@@ -33,7 +33,10 @@ impl ConfigLoader {
     }
 
     pub fn load(&self) -> Result<Message> {
-        let mut db = Cache::new("test_graph", "cfg")?;
+        let db = match Cache::new("test_graph", "cfg") {
+            Ok(db) => Some(db),
+            _ => None,
+        };
 
         if self.file.is_none() {
             return Ok(None);
@@ -42,13 +45,15 @@ impl ConfigLoader {
         let m = fs::metadata(self.file.clone().unwrap())?;
         let r = m.modified()?;
 
-        if let Some(lm) = db.get_cache::<SystemTime>("last_modified")? {
-            if lm == r {
-                println!("Configs were cached");
+        if let Some(mut db) = db {
+            if let Some(lm) = db.get_cache::<SystemTime>("last_modified")? {
+                if lm == r {
+                    println!("Configs were cached");
+                }
             }
-        }
 
-        db.push_cache::<SystemTime>("last_modified", r)?;
+            db.push_cache::<SystemTime>("last_modified", r)?;
+        }
 
         let file = self.file.clone().unwrap();
 

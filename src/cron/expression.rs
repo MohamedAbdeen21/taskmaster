@@ -31,19 +31,28 @@ impl Expression {
         let fields = Unit::parse_to_numeric(fields);
 
         let e = Expression { fields };
-        _ = e.next(Utc::now().naive_utc())?; // ensure expression is valid
+        e.validate()?;
+
         Ok(e)
     }
 
-    pub fn next(&self, now: NaiveDateTime) -> Result<NaiveDateTime> {
-        let schedule = self.create_schedule(now.year(), now.month() as _)?;
+    pub fn next(&self, now: NaiveDateTime) -> NaiveDateTime {
+        // errors checked during initialization, can safely unwrap
+        let schedule = self.create_schedule(now.year(), now.month() as _).unwrap();
         let (next, _) =
-            Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now))?;
-        Ok(Unit::from_hash(next))
+            Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now)).unwrap();
+        Unit::from_hash(next)
     }
 }
 
 impl Expression {
+    fn validate(&self) -> Result<()> {
+        let now = Utc::now().naive_utc();
+        let schedule = self.create_schedule(now.year(), now.month() as _)?;
+        Self::calculate_next_time(Unit::Year, false, &schedule, Unit::to_hash(now))?;
+        Ok(())
+    }
+
     fn calculate_next_time(
         unit: Unit,
         reset: bool,

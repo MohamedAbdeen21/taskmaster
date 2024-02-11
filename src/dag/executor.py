@@ -1,5 +1,4 @@
 import os
-from typing import List
 import time
 import signal
 from multiprocessing import Process
@@ -23,6 +22,9 @@ class Executor:
             self.add(graph)
 
     def add(self, graph):
+        if graph.is_manual():
+            raise TypeError(f"Graph {graph.name()} has a manual schedule")
+
         graph.commit()
         self.schedule(graph)
 
@@ -52,7 +54,7 @@ class Executor:
             exit(1)
 
         self.caught = True
-        print("\nCaught an interrupt signal, waiting for processes to exit")
+        print("\nCaught an interrupt signal, waiting for graphs to finish")
         while any([handler.is_alive() for handler in self.active_handlers]):
             time.sleep(2)
 
@@ -67,10 +69,10 @@ class Executor:
             next = next.replace(tzinfo=timezone.utc)
             delta = next - now 
 
-            # time.sleep(max(0, delta.total_seconds()))
-            time.sleep(5)
+            time.sleep(max(0, delta.total_seconds()))
+            # time.sleep(5)
 
-            handlers = [Process(target=graph.start) for graph in graphs]
+            handlers = [Process(target=graph) for graph in graphs]
 
             [self.schedule(graph) for graph in graphs]
             [handler.start() for handler in handlers]
