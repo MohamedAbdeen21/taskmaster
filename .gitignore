@@ -77,3 +77,4 @@ Cargo.lock
 
 /test/
 dump.rdb
+log.db

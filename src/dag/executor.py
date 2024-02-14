@@ -69,8 +69,8 @@ class Executor:
             next = next.replace(tzinfo=timezone.utc)
             delta = next - now 
 
-            time.sleep(max(0, delta.total_seconds()))
-            # time.sleep(5)
+            # time.sleep(max(0, delta.total_seconds()))
+            time.sleep(5)
 
             handlers = [Process(target=graph) for graph in graphs]
 

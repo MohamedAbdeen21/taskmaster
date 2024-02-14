@@ -18,6 +18,8 @@ Taskmaster is a WIP Orchestration Framework for Python, written in Rust. This pr
 
 - Manual execution to support re-using graphs.
 
+- Standalone deployment, with embedded SQLite3 and cache server.
+
 - Simple API. Check examples folder to get started.
 
 ## Getting Started

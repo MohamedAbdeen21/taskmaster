@@ -1,20 +1,22 @@
-mod cache;
 mod cron;
 mod dag;
+mod store;
 
 use cron::expression::Expression;
 use dag::{graph::Graph, task::task};
 use pyo3::prelude::*;
-use std::include_str;
+use std::{include_str, thread};
 
 #[pymodule]
 fn tm(py: Python, module: &PyModule) -> PyResult<()> {
+    thread::spawn(|| store::server::start().unwrap());
+
     let cron_submodule = PyModule::new(py, "cron")?;
     cron_submodule.add_class::<Expression>()?;
     module.add_submodule(cron_submodule)?;
 
     let exec_impl = include_str!("./dag/executor.py");
-    let executor = PyModule::from_code(py, exec_impl, "executor.py", "executor").unwrap();
+    let executor = PyModule::from_code(py, exec_impl, "executor.py", "executor")?;
 
     module.add_class::<Graph>()?;
     module.add_submodule(executor)?;

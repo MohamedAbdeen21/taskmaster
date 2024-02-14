@@ -1,5 +1,5 @@
 use super::{config_loader::ConfigLoader, task::Task};
-use crate::cron::expression::Expression;
+use crate::{cron::expression::Expression, store};
 use anyhow::{anyhow, Error, Result};
 use chrono::{NaiveDateTime, Utc};
 use itertools::Itertools;
@@ -9,13 +9,13 @@ use std::collections::{HashMap, VecDeque};
 
 #[pyclass]
 pub struct Graph {
-    #[allow(dead_code)]
     name: String,
     graph: HashMap<String, Vec<String>>,
     tasks: HashMap<String, Task>,
     expression: Option<Expression>,
     cfg_loader: ConfigLoader,
     execution_order: Vec<String>,
+    store: store::client::Client,
 }
 
 #[pymethods]
@@ -42,6 +42,7 @@ impl Graph {
             graph: HashMap::new(),
             tasks: HashMap::new(),
             execution_order: Vec::new(),
+            store: store::client::Client::new()?,
         })
     }
 
@@ -149,14 +150,22 @@ impl Graph {
     }
 
     fn __call__(&mut self, py: Python) -> Result<()> {
-        let args = &self.cfg_loader.load()?;
+        let run_id = self.store.insert_log(self.name.clone())?;
+        match self.run(py) {
+            Ok(_) => {
+                self.store.update_log(run_id, store::Status::Completed)?;
+            }
+            Err(e) => {
+                eprintln!("Graph {} failed with err {}", &self.name, e);
+                self.store.update_log(run_id, store::Status::Failed)?;
+            }
+        }
 
-        // TODO: Logger
-        // if let Some(cfg) = &args {
-        //     println!("{} is running with config {}", &self.name, cfg);
-        // } else {
-        //     println!("{} is running with no configs", &self.name);
-        // }
+        Ok(())
+    }
+
+    fn run(&mut self, py: Python) -> Result<()> {
+        let args = &self.cfg_loader.load()?;
 
         if self.is_empty() || !self.is_sorted() {
             return Err(anyhow!("Please call `commit()` before running the Graph"));
