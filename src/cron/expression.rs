@@ -1,4 +1,4 @@
-use super::helpers::{adjust_days_to_month, get_next, next_month};
+use super::helpers::{adjust_days_to_month, get_next, next_month, Schedule};
 use super::unit::Unit;
 use anyhow::{anyhow, Error, Result};
 use chrono::{Datelike, NaiveDateTime, Utc};
@@ -8,8 +8,6 @@ use std::collections::HashMap;
 
 const DOM: usize = 2;
 const DOW: usize = 4;
-
-type Schedule = HashMap<Unit, Vec<i32>>;
 
 #[pyclass]
 #[derive(Debug, Clone)]

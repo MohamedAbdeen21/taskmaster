@@ -3,6 +3,8 @@ use chrono::{Datelike, NaiveDate};
 use itertools::Itertools;
 use std::collections::HashMap;
 
+pub type Schedule = HashMap<Unit, Vec<i32>>;
+
 pub fn get_next(values: &[i32], unit: i32) -> (i32, bool) {
     if let Some(v) = values.iter().find(|&&v| v > unit) {
         return (*v, false);
@@ -25,11 +27,7 @@ pub fn next_month(time: HashMap<Unit, i32>) -> HashMap<Unit, i32> {
     time
 }
 
-pub fn adjust_days_to_month(
-    mut schedule: HashMap<Unit, Vec<i32>>,
-    year: i32,
-    month: i32,
-) -> HashMap<Unit, Vec<i32>> {
+pub fn adjust_days_to_month(mut schedule: Schedule, year: i32, month: i32) -> Schedule {
     // Month is not in schedule and therefore has no days
     if !schedule[&Unit::Month].contains(&(month as _)) {
         return schedule;

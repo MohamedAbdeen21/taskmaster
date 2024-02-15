@@ -21,7 +21,7 @@ pub struct Graph {
 #[pymethods]
 impl Graph {
     #[new]
-    fn new(name: String, schedule: &str, config: Option<String>) -> Result<Self, Error> {
+    fn new(name: String, schedule: &str, config: Option<&str>) -> Result<Self, Error> {
         let py_file = Python::with_gil(|py| -> Result<String> {
             let locals = PyDict::new(py);
             py.run("import os; s=os.path.abspath(__file__)", None, Some(locals))?;
