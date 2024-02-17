@@ -7,13 +7,14 @@ from tm import task, Graph, Executor
 def hello_world():
     print("Hello, world!")
 
-# Define a simple graph
+# Define a simple graph that runs every minute
 graph = Graph(name="hello world", schedule="* * * * *")
 
 # Register a task to a graph
 graph.add_edges([hello_world])
 
 # Register graph to an executor
+# Executors ensure that graphs run concurrently and on-time
 executor = Executor(graphs=[graph])
 
 # Start the executor

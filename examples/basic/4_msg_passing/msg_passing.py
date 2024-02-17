@@ -13,13 +13,15 @@ from tm import task, Graph, Executor
 #           \  |  /
 #            leaf
 
-# Root can take no arguments or
-# 'config' arg if config file is provided to Graph
+# Root can take an argument as demonstrated in the upcoming example 5
+
+# Messages must be of type Option[Dict]
 @task()
 def root():
     return {"some_key": 0}
 
-# Use name of parent as argument
+# Message from parent is passed as a keyword argument
+# With parent name as a the argument name
 @task()
 def add_2(root):
     msg = root['some_key']

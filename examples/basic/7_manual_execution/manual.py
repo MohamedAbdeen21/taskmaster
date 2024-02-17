@@ -1,4 +1,6 @@
 # Run a graph without the executor (i.e. manual trigger)
+# This can be helpful when you want to re-use graphs inside
+# other tasks
 
 from tm import task, Graph
 
@@ -13,7 +15,9 @@ graph = Graph(name="hello world", schedule="manual")
 # add tasks to the graph
 graph.add_edges([hello_world])
 
-# Validate and sort the graph
+# Validate and sort the graph, usually automatically 
+# called by the executor
+# The graph is only rejected if it has cycles
 graph.commit()
 
 # Run the graph
