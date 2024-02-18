@@ -5,13 +5,13 @@ use pyo3::{
 use std::time::Duration;
 use std::{collections::HashMap, thread::sleep};
 
-pub type Message = Option<Py<PyDict>>;
+pub type Message = Option<Py<PyAny>>;
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Task {
     pub name: String,
-    pub inputs: HashMap<String, Message>,
+    pub deps: HashMap<String, Message>,
     retries: u64,
     retry_delay: f64,
     backoff: f64,
@@ -28,7 +28,7 @@ pub fn task(
     let f = move |args: &PyTuple, _kwargs: Option<&PyDict>| -> PyResult<Task> {
         let callable: PyObject = args.get_item(0)?.into();
         return Ok(Task {
-            inputs: HashMap::new(),
+            deps: HashMap::new(),
             retries: retries.unwrap_or_default(),
             retry_delay: retry_delay.unwrap_or_default(),
             backoff: backoff.unwrap_or_default(),
@@ -55,17 +55,18 @@ impl Task {
 }
 
 impl Task {
-    pub fn add_argument(&mut self, parent: &str) {
-        self.inputs.insert(parent.to_string(), None);
+    pub fn add_dep(&mut self, parent: &str) {
+        self.deps.insert(parent.to_string(), None);
     }
 
     pub fn set_argument(&mut self, name: &str, value: &Message) {
-        self.inputs.insert(name.to_string(), value.clone());
+        self.deps.insert(name.to_string(), value.clone());
     }
 
-    pub fn start(&self, py: Python) -> PyResult<Message> {
-        let kwargs = Some(self.inputs.clone().into_py_dict(py));
-        let args: &PyTuple = PyTuple::empty(py);
+    pub fn start(&self, py: Python, args: &PyTuple, kwargs: Message) -> PyResult<Message> {
+        let kwargs = kwargs.unwrap_or(self.deps.clone().into_py_dict(py).into());
+
+        let kwargs: Option<&PyDict> = kwargs.extract(py)?;
 
         let mut msg = self.__call__(args, kwargs);
 

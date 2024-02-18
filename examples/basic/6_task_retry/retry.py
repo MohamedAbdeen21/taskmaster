@@ -12,7 +12,7 @@ def can_fail():
     global calls
     calls += 1
     if calls == 4: # 1 call + 3 retries
-        return None
+        return "Success"
     raise(ValueError)
 
 # create the graph

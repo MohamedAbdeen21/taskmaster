@@ -67,7 +67,7 @@ impl ConfigLoader {
                 Some(locals),
             )
             .with_context(|| format!("failed to read file {}", file))?;
-            let cfg: Py<PyDict> = locals.get_item("cfg").unwrap().extract()?;
+            let cfg: Py<PyAny> = locals.get_item("cfg").unwrap().into();
             let cfg_str: String = locals.get_item("s").unwrap().extract()?;
             Ok((Some(cfg), cfg_str))
         })
@@ -82,7 +82,7 @@ impl ConfigLoader {
                 Some(locals),
             )
             .with_context(|| format!("Failed to convert cached config: {}", s))?;
-            let cfg: Py<PyDict> = locals.get_item("cfg").unwrap().extract()?;
+            let cfg: Py<PyAny> = locals.get_item("cfg").unwrap().into();
             Ok(Some(cfg))
         })
     }

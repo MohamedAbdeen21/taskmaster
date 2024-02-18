@@ -88,35 +88,34 @@ print(t)
 from tm import Graph, Executor, task
 
 # The executor handling the DAG
-# takes a scehdule and path of json file to be passed to root
-# at execution time. Args will be passed in "config" kwarg to root
+# takes a name and a scehdule 
 
 graph = Graph(name="test workflow", schedule="* * * * *")
 
 ##  pass_2 --> add_3 ---------|
-##    |                      V
+##    |                       V
 ##    -----------> print_return_none ----> leaf
 
 @task()
 def pass_2():
-    return {"value": 2}
+    return 2 # Tasks can return any Python Object
 
 # Read parent output using keyword arguments
 @task()
 def add_3(pass_2):
-    msg = pass_2["value"]+3
-    return {"key": msg}
+    msg = pass_2 + 3
+    return msg
 
 # Can have multiple parents
 @task()
 def print_return_none(pass_2, add_3):
-    print(pass_2["value"] + add_3["key"]) # prints 7
+    print(pass_2 + add_3) # prints 7
     # Can also return None
 
 # Can receive None as input
 @task()
 def leaf(print_return_none):
-    print(print_return_none == None) # print true
+    print(print_return_none == None) # prints true
 
 # define the DAG
 graph.add_edges([pass_2], [add_3, print_return_none])

@@ -1,6 +1,6 @@
 # Run a graph without the executor (i.e. manual trigger)
 # This can be helpful when you want to re-use graphs inside
-# other tasks
+# other tasks (check the upcoming example 2)
 
 from tm import task, Graph
 
@@ -20,5 +20,5 @@ graph.add_edges([hello_world])
 # The graph is only rejected if it has cycles
 graph.commit()
 
-# Run the graph
+# Run the graph, accepts *args and **kwargs
 graph()

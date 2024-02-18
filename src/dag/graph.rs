@@ -1,10 +1,13 @@
-use super::{config_loader::ConfigLoader, task::Task};
+use super::{
+    config_loader::ConfigLoader,
+    task::{Message, Task},
+};
 use crate::{cron::expression::Expression, store};
 use anyhow::{anyhow, Error, Result};
 use chrono::{NaiveDateTime, Utc};
 use itertools::Itertools;
-use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3::{prelude::*, types::PyTuple};
 use std::collections::{HashMap, VecDeque};
 
 #[pyclass]
@@ -22,12 +25,16 @@ pub struct Graph {
 impl Graph {
     #[new]
     fn new(name: String, schedule: &str, config: Option<&str>) -> Result<Self, Error> {
-        let py_file = Python::with_gil(|py| -> Result<String> {
-            let locals = PyDict::new(py);
-            py.run("import os; s=os.path.abspath(__file__)", None, Some(locals))?;
-            let ret: String = locals.get_item("s").unwrap().extract()?;
-            Ok(ret)
-        })?;
+        let py_file = if config.is_some() {
+            Python::with_gil(|py| -> Result<String> {
+                let locals = PyDict::new(py);
+                py.run("import os; s=os.path.abspath(__file__)", None, Some(locals))?;
+                let ret: String = locals.get_item("s").unwrap().extract()?;
+                Ok(ret)
+            })?
+        } else {
+            "/".into()
+        };
 
         let expression = if schedule.to_lowercase() == "manual" {
             None
@@ -59,15 +66,30 @@ impl Graph {
     }
 
     fn add_edges(&mut self, parents: Vec<Task>, children: Option<Vec<Task>>) -> Result<()> {
-        let children = children.unwrap_or_default();
-        for parent in parents {
+        let mut children = children.unwrap_or_default();
+
+        for parent in parents.iter() {
             self.graph
                 .entry(parent.name.clone())
                 .or_default()
                 .extend(children.iter().map(|c| c.name.clone()));
 
-            self.tasks.entry(parent.name.clone()).or_insert(parent);
+            for child in children.iter_mut() {
+                child.add_dep(&parent.name);
+            }
         }
+
+        children.iter().for_each(|child| {
+            self.tasks
+                .entry(child.name.clone())
+                .or_insert(child.clone());
+        });
+
+        parents.iter().for_each(|child| {
+            self.tasks
+                .entry(child.name.clone())
+                .or_insert(child.clone());
+        });
 
         Ok(())
     }
@@ -91,7 +113,7 @@ impl Graph {
         let mut in_degrees: HashMap<String, usize> = self
             .tasks
             .values()
-            .map(|task| (task.name.clone(), task.inputs.len()))
+            .map(|task| (task.name.clone(), task.deps.len()))
             .collect();
 
         let mut queue: VecDeque<_> = in_degrees
@@ -149,38 +171,51 @@ impl Graph {
         self.name.clone()
     }
 
-    fn __call__(&mut self, py: Python) -> Result<()> {
+    #[pyo3(signature=(*args, **kwargs))]
+    fn __call__(
+        &mut self,
+        py: Python,
+        args: &PyTuple,
+        kwargs: Option<Py<PyAny>>,
+    ) -> Result<Message> {
         let run_id = self.store.insert_log(self.name.clone())?;
-        match self.run(py) {
-            Ok(_) => {
+        match self.run(py, args, kwargs) {
+            Ok(msg) => {
                 self.store.update_log(run_id, store::Status::Completed)?;
+                Ok(msg)
             }
             Err(e) => {
-                eprintln!("Graph {} failed with err {}", &self.name, e);
+                eprintln!("Graph {} failed: {}", &self.name, e);
                 self.store.update_log(run_id, store::Status::Failed)?;
+                Err(e)
             }
         }
-
-        Ok(())
     }
 
-    fn run(&mut self, py: Python) -> Result<()> {
-        let args = &self.cfg_loader.load()?;
-
+    fn run(&mut self, py: Python, args: &PyTuple, mut kwargs: Message) -> Result<Message> {
         if self.is_empty() || !self.is_sorted() {
             return Err(anyhow!("Please call `commit()` before running the Graph"));
         }
 
+        if kwargs.is_none() {
+            kwargs = self.cfg_loader.load()?;
+        }
+
+        let mut output = None;
+
         for task_name in self.execution_order.iter() {
             let task = self.tasks.get_mut(task_name).unwrap();
 
-            // root node
-            if task.inputs.is_empty() && args.is_some() {
-                task.set_argument("config", args);
-            };
+            if task.deps.is_empty() {
+                // root nodes
+                output = task.start(py, args, kwargs.clone())?;
+            } else {
+                // leaf and inner nodes
+                output = task.start(py, PyTuple::empty(py), None)?;
+            }
 
-            let output = task.start(py)?;
-
+            // println!("{:?}", self.execution_order);
+            // println!("{:?}", self.tasks);
             self.graph
                 .get(task_name)
                 .unwrap_or(&vec![])
@@ -193,6 +228,6 @@ impl Graph {
                 })
         }
 
-        Ok(())
+        Ok(output)
     }
 }

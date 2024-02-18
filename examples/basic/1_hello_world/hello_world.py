@@ -8,13 +8,13 @@ def hello_world():
     print("Hello, world!")
 
 # Define a simple graph that runs every minute
-graph = Graph(name="hello world", schedule="* * * * *")
+graph = Graph(name="Hello world", schedule="* * * * *")
 
 # Register a task to a graph
 graph.add_edges([hello_world])
 
 # Register graph to an executor
-# Executors ensure that graphs run concurrently and on-time
+# Executors ensure that graphs run in-parallel and on-time
 executor = Executor(graphs=[graph])
 
 # Start the executor

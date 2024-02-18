@@ -13,41 +13,40 @@ from tm import task, Graph, Executor
 #           \  |  /
 #            leaf
 
-# Root can take an argument as demonstrated in the upcoming example 5
+# Root task can take an argument as demonstrated in the upcoming example 5
 
-# Messages must be of type Option[Dict]
+# Messages can be any python object
 @task()
 def root():
-    return {"some_key": 0}
+    return 0
 
 # Message from parent is passed as a keyword argument
 # With parent name as a the argument name
+# In this example, add_2 is called with kwarg root=0
 @task()
 def add_2(root):
-    msg = root['some_key']
-    print(f"add_2 got {msg} and returned {msg + 2}")
-    return {"new": msg + 2}
+    print(f"add_2 got {root} and returned {root + 2}")
+    return root + 2
 
 # tasks can have multiple children
 @task()
 def add_3(root):
-    msg = root['some_key']
-    print(f"add_3 got {msg} and returned {msg + 3}")
-    return {"new": msg + 3}
+    print(f"add_3 got {root} and returned {root + 3}")
+    return root + 3
 
-# you can use **kwargs to ignore input or accept generic arguments
+# you can use **kwargs to ignore input or handle the arguments yourself
 @task()
 def do_nothing(**kwargs):
-    msg = kwargs["root"]["some_key"]
-    print(f"do_nothing got kwarg root {msg} and returned None")
-    return None # Tasks must return Optional[Dict]
+    root = kwargs["root"]
+    print(f"do_nothing got kwarg root {root} and returned None")
+    return None  # tasks can also return None
 
 # tasks can have multiple parents as well
 @task()
 def leaf(add_2, add_3, do_nothing):
-    assert add_2["new"] == 2
-    assert add_3["new"] == 3
-    assert do_nothing == None
+    assert add_2 == 2
+    assert add_3 == 3
+    assert do_nothing is None
     print("Leaf received all inputs correctly")
 
 # create the graph
