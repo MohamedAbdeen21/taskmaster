@@ -54,14 +54,6 @@ impl Graph {
     }
 
     fn commit(&mut self) -> Result<()> {
-        if self.is_empty() {
-            return Err(anyhow!("Graph is empty"));
-        }
-
-        if !self.is_sorted() {
-            self.execution_order = self.sort()?;
-        }
-
         Ok(())
     }
 
@@ -193,8 +185,12 @@ impl Graph {
     }
 
     fn run(&mut self, py: Python, args: &PyTuple, mut kwargs: Message) -> Result<Message> {
-        if self.is_empty() || !self.is_sorted() {
-            return Err(anyhow!("Please call `commit()` before running the Graph"));
+        if self.is_empty() {
+            return Err(anyhow!("Graph is empty"));
+        }
+
+        if !self.is_sorted() {
+            self.execution_order = self.sort()?;
         }
 
         if kwargs.is_none() {

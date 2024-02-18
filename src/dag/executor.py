@@ -25,7 +25,6 @@ class Executor:
         if graph.is_manual():
             raise TypeError(f"Graph {graph.name()} has a manual schedule")
 
-        graph.commit()
         self.schedule(graph)
 
     def schedule(self, graph):
@@ -69,8 +68,8 @@ class Executor:
             next = next.replace(tzinfo=timezone.utc)
             delta = next - now 
 
-            # time.sleep(max(0, delta.total_seconds()))
-            time.sleep(5)
+            time.sleep(max(0, delta.total_seconds()))
+            # time.sleep(5)
 
             handlers = [Process(target=graph) for graph in graphs]
 

@@ -19,5 +19,4 @@ def ask_user_input():
 login = Graph(name="Login workflow", schedule="manual")
 login.add_edges([ask_user_input])
 
-login.commit()
 login()

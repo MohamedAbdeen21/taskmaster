@@ -37,5 +37,3 @@ validate = Graph(name="hello world", schedule="manual")
 
 # add tasks to the graph
 validate.add_edges([validate_email, validate_password], [collect])
-
-validate.commit()

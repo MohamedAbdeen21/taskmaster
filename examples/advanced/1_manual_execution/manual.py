@@ -15,10 +15,5 @@ graph = Graph(name="hello world", schedule="manual")
 # add tasks to the graph
 graph.add_edges([hello_world])
 
-# Validate and sort the graph, usually automatically 
-# called by the executor
-# The graph is only rejected if it has cycles
-graph.commit()
-
 # Run the graph, accepts *args and **kwargs
 graph()
