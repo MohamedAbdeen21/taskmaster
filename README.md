@@ -8,9 +8,9 @@ Taskmaster is a WIP Orchestration Framework for Python, written in Rust. This pr
 
 - Retry-on-fail, with configurable retry delays and exponential backoff.
 
-- Supports communication between Tasks through passing dicts as returns and arguments.
+- Supports communication between Tasks.
 
-- Reloads the DAG config file each run, so you can parametrize the DAG during runtime.
+- Supports runtime DAG configuration through json files.
 
 - A from-scratch cron expression parser and evaluator. In case you just need a cron parser without the DAG engine.
 

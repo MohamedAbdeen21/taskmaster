@@ -8,7 +8,7 @@ use std::{collections::HashMap, thread::sleep};
 pub type Message = Option<Py<PyAny>>;
 
 #[pyclass]
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Task {
     pub name: String,
     pub deps: HashMap<String, Message>,

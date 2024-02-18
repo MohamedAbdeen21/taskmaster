@@ -214,8 +214,6 @@ impl Graph {
                 output = task.start(py, PyTuple::empty(py), None)?;
             }
 
-            // println!("{:?}", self.execution_order);
-            // println!("{:?}", self.tasks);
             self.graph
                 .get(task_name)
                 .unwrap_or(&vec![])
